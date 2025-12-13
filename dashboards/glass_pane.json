@@ -1,0 +1,69 @@
+{
+  "displayName": "Organization Logging Glass Pane",
+  "gridLayout": {
+    "columns": "2",
+    "widgets": [
+      {
+        "title": "Log Volume (Total)",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/byte_count\" resource.type=\"global\"",
+                  "aggregation": {
+                    "perSeriesAligner": "ALIGN_RATE",
+                    "crossSeriesReducer": "REDUCE_SUM",
+                    "alignmentPeriod": "60s"
+                  }
+                }
+              },
+              "plotType": "LINE"
+            }
+          ]
+        }
+      },
+      {
+        "title": "Error Count (Global)",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/log_entry_count\" resource.type=\"global\" (metric.labels.severity=\"ERROR\" OR metric.labels.severity=\"CRITICAL\" OR metric.labels.severity=\"ALERT\" OR metric.labels.severity=\"EMERGENCY\")",
+                  "aggregation": {
+                    "perSeriesAligner": "ALIGN_RATE",
+                    "crossSeriesReducer": "REDUCE_SUM",
+                    "alignmentPeriod": "60s"
+                  }
+                }
+              },
+              "plotType": "LINE"
+            }
+          ]
+        }
+      },
+      {
+        "title": "Logs by Log Name",
+        "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"logging.googleapis.com/log_entry_count\" resource.type=\"global\"",
+                    "aggregation": {
+                        "perSeriesAligner": "ALIGN_RATE",
+                        "crossSeriesReducer": "REDUCE_SUM",
+                        "groupByFields": ["metric.labels.log"],
+                         "alignmentPeriod": "60s"
+                    }
+                  }
+                },
+                "plotType": "STACKED_BAR"
+              }
+            ]
+          }
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "role": "WRITER",
+    "specialGroup": "projectWriters"
+  },
+  {
+    "role": "OWNER",
+    "specialGroup": "projectOwners"
+  },
+  {
+    "role": "OWNER",
+    "userByEmail": "drew@dacvisuals.com"
+  },
+  {
+    "role": "READER",
+    "specialGroup": "projectReaders"
+  },
+  {
+    "role": "WRITER",
+    "userByEmail": "service-org-93534264368@gcp-sa-logging.iam.gserviceaccount.com"
+  },
+  {
+    "role": "READER",
+    "userByEmail": "service-845772051724@gcp-sa-looker.iam.gserviceaccount.com"
+  }
+]
