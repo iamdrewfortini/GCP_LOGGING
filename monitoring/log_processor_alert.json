@@ -1,0 +1,24 @@
+{
+    "displayName": "Log Processor Errors",
+    "combiner": "OR",
+    "conditions": [
+      {
+        "displayName": "Function Error Logs > 0",
+        "conditionThreshold": {
+          "filter": "resource.type = \"cloud_function\" AND resource.labels.function_name = \"log-processor\" AND metric.type = \"logging.googleapis.com/log_entry_count\" AND metric.labels.severity = \"ERROR\"",
+          "comparison": "COMPARISON_GT",
+          "thresholdValue": 0,
+          "duration": "60s",
+          "trigger": {
+            "count": 1
+          },
+          "aggregations": [
+            {
+              "alignmentPeriod": "60s",
+              "perSeriesAligner": "ALIGN_RATE"
+            }
+          ]
+        }
+      }
+    ]
+}
