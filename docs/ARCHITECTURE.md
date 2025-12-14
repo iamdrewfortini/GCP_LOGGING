@@ -15,14 +15,18 @@ This system provides a centralized logging and visualization platform for Google
 
 ### 2. Storage Schema (BigQuery)
 Logs are routed into tables based on their resource type or log name (e.g., `syslog`, `cloudaudit_googleapis_com_activity`).
-- **Challenge:** Different log sources have different schemas for `jsonPayload`.
-- **Current Solution:** The query layer casts `jsonPayload` to `STRING` to avoid "Field mismatch" errors when unioning tables.
+- **Strategy:** Partitioned Tables (`--use-partitioned-tables`) for performance.
+- **Canonical View:** A BigQuery View `view_canonical_logs` unifies these tables into a single schema (`event_ts`, `severity`, `service`, `message`, `json_payload_str`) to simplify querying.
 
 ### 3. Query Layer (Glass Pane)
 The "Glass Pane" is a Python Flask application running on Cloud Run.
-- **Dynamic Discovery:** It queries `INFORMATION_SCHEMA.TABLES` to find *all* active tables in the `central_logging_v1` dataset.
-- **Unified View:** It constructs a dynamic `UNION ALL` SQL query to fetch the latest 50 logs across all found tables.
-- **Latency:** BigQuery streaming ingestion has a typical latency of few seconds to a few minutes.
+- **Canonical View Usage:** Queries the `view_canonical_logs` for all log retrieval, simplifying frontend logic.
+- **API Endpoints:**
+    - `GET /api/logs`: Fetches paginated, filterable log entries.
+    - `GET /api/logs/:id`: (Future) Fetches a single log entry by ID.
+    - `GET /api/facets`: (Future) Fetches aggregated facet data (e.g., unique services, severities).
+    - `GET /api/tail`: (Future) Server-Sent Events (SSE) for near real-time log tailing.
+    - `POST /api/chat`: Interacts with the Gemini Log Debugger Agent for AI-assisted log analysis.
 
 ## Component Diagram
 
@@ -37,8 +41,14 @@ graph LR
     Topic --> Function[Cloud Function: Log Processor]
     
     User((User)) --> GlassPane[Cloud Run: Glass Pane]
-    GlassPane -->|SQL| Dataset
+    GlassPane -->|SQL via API| Dataset
+    GlassPane -->|Agent API| GeminiAgent[Gemini Log Debugger Agent]
 ```
+
+## Gemini Log Debugger Agent
+- **Framework:** Built using LangChain and LangGraph.
+- **Functionality:** Provides AI-assisted analysis of log entries via the `/api/chat` endpoint.
+- **Safety:** Redacts sensitive information, enforces context window limits, and requires explicit confirmation for controlled actions.
 
 ## Security Assumptions
 - The Glass Pane service account has `roles/bigquery.dataViewer` (or `jobUser` + `dataViewer`) on the central dataset.
