@@ -1,0 +1,21 @@
+{
+  "toon":"warp_prompt.toon.v1",
+  "id":"02_conventional_commit_message_builder",
+  "title":"Generate Standardized Commit Message (Conventional Commits + Context)",
+  "description":"Generates a Conventional Commit message that matches the currently staged diff, and applies breaking-change formatting when requested.",
+  "arguments":{
+    "TYPE":["Commit type (enum).","feat",true],
+    "SCOPE":["Scope label inside parentheses.","repo",true],
+    "BREAKING":["Whether this is a breaking change (enum).","false",true],
+    "SUBJECT":["Short subject line (<=72 chars); if blank, generate.","",true],
+    "WHAT":["Bullet describing what changed; if blank, infer from diff.","",true],
+    "WHY":["Bullet describing why; if blank, infer from diff.","",true],
+    "REFS":["Issue/PR references (optional).","",true],
+    "BREAKING_DETAILS":["Breaking change details (required if BREAKING=true).","",true]
+  },
+  "enums":{
+    "TYPE":["feat","fix","chore","docs","refactor","test","perf","build","ci"],
+    "BREAKING":["false","true"]
+  },
+  "prompt":"You are a commit-message agent. You must base all output ONLY on the staged diff.\n\nGather context:\n- git status -sb\n- git diff --cached --stat\n- git diff --cached\n\nBuild the final message inputs:\n- TYPE={{TYPE}}\n- SCOPE={{SCOPE}}\n- BREAKING={{BREAKING}}\n- If SUBJECT is empty: propose 3 candidates and pick the best.\n- If WHAT/WHY are empty: infer them strictly from the staged diff.\n\nBreaking-change rules:\n- If BREAKING == \"true\":\n  - The subject line MUST include an exclamation mark before the colon: TYPE(SCOPE)!: SUBJECT\n  - BREAKING_DETAILS MUST be non-empty; if it is empty, stop and ask for it (do not guess).\n  - Include a footer line: \"BREAKING CHANGE: <BREAKING_DETAILS>\"\n- If BREAKING == \"false\":\n  - The subject line MUST NOT include '!': TYPE(SCOPE): SUBJECT\n  - Do NOT include a BREAKING CHANGE footer.\n\nOutput the final copy/paste commit message EXACTLY in this structure:\n<HEADER>\n\n- <WHAT>\n- <WHY>\n\nRefs: <REFS>\n<OPTIONAL_BREAKING_FOOTER_IF_APPLICABLE>\n\nDo not invent changes not present in git diff --cached."
+}

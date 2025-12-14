@@ -1,0 +1,81 @@
+{
+  "security": {
+    "auth": {
+      "selectedType": "gemini-api-key"
+    }
+  },
+  "gemini": {
+    "provider": "google-ai-studio",
+    "default_model": "gemini-3.0-pro-preview",
+    "available_models": {
+      "experimental": [
+        "gemini-3.0-pro-preview",
+        "gemini-2.0-flash-exp",
+        "gemini-2.0-flash-thinking-exp-1219",
+        "gemini-exp-1206",
+        "gemini-exp-1121",
+        "learnlm-1.5-pro-experimental"
+      ],
+      "stable": [
+        "gemini-1.5-pro",
+        "gemini-1.5-pro-002",
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-002",
+        "gemini-1.5-flash-8b",
+        "gemini-1.0-pro"
+      ],
+      "vision": [
+        "gemini-1.5-pro",
+        "gemini-1.5-flash",
+        "gemini-pro-vision"
+      ]
+    },
+    "config": {
+      "thinking_level": "high",
+      "temperature": 1,
+      "max_tokens": 8192,
+      "stream": true,
+      "safety_settings": {
+        "block_none": false
+      }
+    },
+    "rate_limiting": {
+      "requests_per_minute": 1000,
+      "tokens_per_minute": 4000000,
+      "concurrent_requests": 10,
+      "retry_config": {
+        "max_retries": 3,
+        "exponential_backoff": true,
+        "base_delay_ms": 1000,
+        "max_delay_ms": 32000
+      }
+    },
+    "fallback": {
+      "model": "gemini-1.5-pro",
+      "enabled": true
+    }
+  },
+  "surfaces": {
+    "terminal": {
+      "model": "gemini-3.0-pro-preview",
+      "thinking_level": "high"
+    },
+    "editor": {
+      "model": "gemini-3.0-pro-preview",
+      "thinking_level": "high"
+    },
+    "browser": {
+      "model": "gemini-3.0-pro-preview",
+      "thinking_level": "high"
+    }
+  },
+  "mcpServers": {
+    "context7": {
+      "httpUrl": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}",
+        "Accept": "application/json, text/event-stream"
+      }
+    }
+  }
+}

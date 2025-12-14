@@ -1,0 +1,84 @@
+Execute a comprehensive validation and integration workflow for Vertex AI in the GCP_LOGGING project.
+
+WORKFLOW (6 phases: N0→N1→N2→N3→N4→N5→N6):
+
+PHASE N0 - VALIDATE APPLICATION END-TO-END:
+• Identify all packages (package.json, requirements.txt, Dockerfile)
+• Run: lint, tests, build commands
+• Execute traffic generator: ./scripts/generate_traffic.sh
+• Wait 5 minutes for BigQuery streaming buffer
+• Verify UI at https://glass-pane-845772051724.us-central1.run.app
+• Test: filters, log detail drawer, SSE tail, AI chat routes
+• OUTPUT: VALIDATION_REPORT.md with pass/fail, commands, next actions
+
+PHASE N1 - GCLOUD PROJECT INVENTORY:
+• Run: gcloud --version
+• Run: gcloud auth list
+• Run: gcloud config list
+• Run: gcloud config get-value project
+• Run: gcloud config get-value ai/region || gcloud config get-value compute/region
+• Document: project_id + default region for Vertex AI
+
+PHASE N2 - VERTEX AI INVENTORY:
+• Set: PROJECT_ID=$(gcloud config get-value project)
+• Set: REGION=$(gcloud config get-value ai/region || echo us-central1)
+• Run: gcloud ai endpoints list --project $PROJECT_ID --region $REGION
+• Run: gcloud ai models list --project $PROJECT_ID --region $REGION
+• For each endpoint, run: gcloud ai endpoints describe <endpoint> --format=json
+• Identify: Gemini (publisher) vs custom vs tuned models
+• OUTPUT: VERTEX_INVENTORY.json and VERTEX_INVENTORY.md
+
+PHASE N3 - CONTEXT7 RESEARCH (USE CONTEXT7 MCP SERVER):
+• Use Context7 MCP tools to retrieve official Vertex AI documentation
+• Topics: Model Registry, custom model upload, endpoints, online prediction
+• Topics: Service accounts/IAM, streaming responses, quotas/limits, cost
+• Extract: recommended deployment pattern, auth approach, request/response formats
+• OUTPUT: docs/ADR_0002_VERTEX_CUSTOM_MODEL.md (decision: custom endpoint vs tuned vs hybrid)
+• OUTPUT: docs/VERTEX_INTEGRATION_GUIDE.md (implementation guide)
+
+PHASE N4 - DESIGN INTEGRATION:
+• Define model purpose: log summarization, clustering, root-cause analysis
+• Design architecture: Cloud Run backend → Vertex Endpoint (no direct frontend calls)
+• Define feature flags: VERTEX_ENABLED, VERTEX_ENDPOINT_ID, VERTEX_REGION, MODEL_MODE
+• Define API: /api/ai/chat, /api/ai/tools/* with audit logging and redaction
+• Design: caching strategy, token budgeting, batching
+
+PHASE N5 - IMPLEMENT VERTEX CLIENT:
+• Implement: server-side Vertex client wrapper with retries/timeouts
+• Implement: LangChain LLM wrapper for LangGraph routing
+• Implement: redaction middleware (before model calls)
+• Implement: structured telemetry for cost/latency tracking
+• Add: unit tests with mocks (no live Vertex calls in CI)
+• Ensure: local dev runs in mock mode, production uses Vertex with least privilege
+
+PHASE N6 - DEPLOY VERIFICATION:
+• Verify Cloud Run service account has: roles/aiplatform.endpoints.predict
+• Run: gcloud run services describe glass-pane --region us-central1 --format=json
+• Smoke test: agent retrieves logs, summarizes with citations
+• Verify: no redacted tokens in responses
+• OUTPUT: GO_LIVE_CHECKLIST.md with rollout steps and fallback plan (disable flag)
+
+GLOBAL GUARDRAILS:
+⚠️ Redact all secrets from logs, screenshots, console output, and generated docs
+⚠️ All Vertex AI integration must use workload identity with least-privilege
+⚠️ All AI features must be feature-flagged and safe-by-default (read-only tools)
+⚠️ Every claim in validation report must include the command run and output location
+⚠️ No destructive GCP actions without confirmation
+⚠️ Keep cost visibility (log all Vertex API calls with token counts)
+
+PROJECT CONTEXT:
+• Repo: /home/daclab-ai/GCP_LOGGING
+• Cloud Run: https://glass-pane-845772051724.us-central1.run.app
+• Traffic script: scripts/generate_traffic.sh
+• GCP Project: diatonic-ai-gcp
+• Default Region: us-central1
+• Dataset: central_logging_v1
+
+DELIVERABLES REQUIRED:
+1. VALIDATION_REPORT.md
+2. VERTEX_INVENTORY.md
+3. docs/ADR_0002_VERTEX_CUSTOM_MODEL.md
+4. docs/VERTEX_INTEGRATION_GUIDE.md
+5. GO_LIVE_CHECKLIST.md
+
+Start with Phase N0 and proceed sequentially through all phases. Use the Context7 MCP server when you reach Phase N3 for documentation research.

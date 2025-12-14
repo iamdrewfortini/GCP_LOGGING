@@ -1,0 +1,185 @@
+{
+  "format": "took_graph_json_v1",
+  "target_agent": {
+    "name": "gemini-cli",
+    "mode": "validator + gcp-vertex-inventory + context7-docs-architect + implementer",
+    "execution_style": "verify-first, then design, then implement behind flags",
+    "constraints": {
+      "no_secrets": true,
+      "no_destructive_gcp_actions_without_confirm": true,
+      "use_context7_mcp_first_for_docs": true,
+      "prefer_vertex_ai_managed_endpoints": true,
+      "keep_cost_visible": true
+    }
+  },
+  "inputs": {
+    "repo_root": ".",
+    "cloud_run_url": "https://glass-pane-845772051724.us-central1.run.app",
+    "traffic_script": "GCP_LOGGING/scripts/generate_traffic.sh"
+  },
+  "global_guardrails": [
+    "Redact secrets from logs, screenshots, console output, and any generated docs.",
+    "All Vertex AI integration must use workload identity / service account with least-privilege.",
+    "All new AI features must be feature-flagged and safe-by-default (read-only tools unless explicitly approved).",
+    "Every claim in the validation report must include the command run and its output location."
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "id": "N0",
+        "type": "validate_app",
+        "title": "Validate the entire application end-to-end",
+        "actions": [
+          "Identify frontend/backend packages and run: lint, tests, build.",
+          "Run local/dev startup if supported; confirm API health endpoints.",
+          "Execute traffic generator; wait for BigQuery streaming; verify the UI shows mixed severities and sources.",
+          "Validate: filters/sort/search, log detail drawer, SSE tail, and any AI chat/tool routes if present."
+        ],
+        "commands": [
+          "pwd",
+          "ls -la",
+          "git status || true",
+          "find . -maxdepth 3 -name package.json -o -name pyproject.toml -o -name requirements.txt -o -name Dockerfile",
+          "npm -v && node -v || true",
+          "python --version || true",
+          "make test || true",
+          "npm test || true",
+          "npm run lint || true",
+          "npm run build || true",
+          "pytest -q || true",
+          "bash \"${TRAFFIC_SCRIPT:-GCP_LOGGING/scripts/generate_traffic.sh}\" || true",
+          "echo \"Waiting 5 minutes for streaming buffers...\" && sleep 300",
+          "curl -fsSL \"${CLOUD_RUN_URL:-https://glass-pane-845772051724.us-central1.run.app}\" | head -n 40 || true"
+        ],
+        "acceptance_criteria": [
+          "A single VALIDATION_REPORT.md is produced with pass/fail, reproduction commands, and next actions."
+        ],
+        "outputs": ["VALIDATION_REPORT.md"]
+      },
+      {
+        "id": "N1",
+        "type": "gcloud_project_inventory",
+        "title": "Analyze gcloud SDK config + identify active project and region defaults",
+        "actions": [
+          "Print gcloud version and active account/project.",
+          "Detect default region/zone; record for Vertex AI operations."
+        ],
+        "commands": [
+          "gcloud --version",
+          "gcloud auth list",
+          "gcloud config list",
+          "gcloud config get-value project",
+          "gcloud config get-value ai/region || true",
+          "gcloud config get-value compute/region || true",
+          "gcloud config get-value compute/zone || true"
+        ],
+        "acceptance_criteria": [
+          "Report includes project_id + default region to use for Vertex AI calls."
+        ]
+      },
+      {
+        "id": "N2",
+        "type": "vertex_ai_inventory",
+        "title": "Discover Vertex AI deployed models/endpoints (and any existing model registry assets)",
+        "actions": [
+          "List endpoints and deployed models (all regions you use).",
+          "List Model Registry models and recent operations.",
+          "Capture which models are Gemini (publisher) vs custom (uploaded) vs tuned."
+        ],
+        "commands": [
+          "export PROJECT_ID=\"$(gcloud config get-value project)\"",
+          "export REGION=\"$(gcloud config get-value ai/region 2>/dev/null || echo us-central1)\"",
+          "gcloud ai endpoints list --project \"$PROJECT_ID\" --region \"$REGION\" || true",
+          "gcloud ai models list --project \"$PROJECT_ID\" --region \"$REGION\" || true",
+          "for EP in $(gcloud ai endpoints list --project \"$PROJECT_ID\" --region \"$REGION\" --format=\"value(name)\" 2>/dev/null); do echo \"---\"; echo \"Endpoint: $EP\"; gcloud ai endpoints describe \"$EP\" --project \"$PROJECT_ID\" --region \"$REGION\" --format=json; done || true"
+        ],
+        "acceptance_criteria": [
+          "Report enumerates endpoints, deployedModels, model ids, and which are safe to reuse."
+        ],
+        "outputs": ["VERTEX_INVENTORY.json", "VERTEX_INVENTORY.md"]
+      },
+      {
+        "id": "N3",
+        "type": "context7_research",
+        "title": "Use Context7 MCP server to pull official docs and best patterns for custom Vertex AI deployment",
+        "actions": [
+          "Use Context7 to retrieve the latest official guidance for: Model Registry, custom model upload, endpoints, online prediction, service accounts/IAM, VPC-SC (if relevant), and streaming responses.",
+          "Extract: recommended deployment pattern, auth approach, request/response formats, quotas/limits, and cost knobs.",
+          "Produce an Implementation Decision Record (ADR) for custom model deployment + app integration."
+        ],
+        "mcp_tools_required": [
+          "context7.search",
+          "context7.open",
+          "context7.extract"
+        ],
+        "deliverables": [
+          "docs/ADR_0002_VERTEX_CUSTOM_MODEL.md",
+          "docs/VERTEX_INTEGRATION_GUIDE.md"
+        ],
+        "acceptance_criteria": [
+          "ADR clearly chooses: (A) custom model on Vertex Endpoint, (B) tuned/publisher model, or (C) hybrid; includes rationale and rollout plan."
+        ]
+      },
+      {
+        "id": "N4",
+        "type": "design_integration",
+        "title": "Design the app integration: AI Log Debugger Agent backed by Vertex endpoint",
+        "actions": [
+          "Define: model purpose (summarization, clustering, root-cause assistant), inputs/outputs, and tool policy.",
+          "Choose runtime path: Cloud Run backend calls Vertex Endpoint via google-auth; frontend never calls Vertex directly.",
+          "Add feature flags: VERTEX_ENABLED, VERTEX_ENDPOINT_ID, VERTEX_REGION, MODEL_MODE (publisher/custom).",
+          "Add caching + token budgeting + batching strategy."
+        ],
+        "acceptance_criteria": [
+          "A concrete interface exists: /api/ai/chat, /api/ai/tools/* with audit logging and redaction."
+        ]
+      },
+      {
+        "id": "N5",
+        "type": "implement_vertex_client",
+        "title": "Implement Vertex AI client + LangChain/LangGraph adapter",
+        "actions": [
+          "Implement a server-side Vertex client wrapper (REST or Vertex SDK) with retries/timeouts.",
+          "Add LangChain LLM wrapper (or direct tool node) for LangGraph routing.",
+          "Add redaction middleware before model calls; add structured telemetry for cost/latency.",
+          "Add unit tests using recorded fixtures/mocks (no live calls in CI)."
+        ],
+        "acceptance_criteria": [
+          "Local dev can run in 'mock mode' and production calls Vertex with least privilege."
+        ]
+      },
+      {
+        "id": "N6",
+        "type": "deploy_verify",
+        "title": "Deploy verification + safety checks",
+        "actions": [
+          "Confirm Cloud Run service account permissions: aiplatform.endpoints.predict (and only what's needed).",
+          "Smoke-test: agent can retrieve logs, summarize with citations, and never returns redacted tokens.",
+          "Write final rollout checklist and fallback plan (disable flag)."
+        ],
+        "commands": [
+          "gcloud run services describe glass-pane --region \"$REGION\" --format=json || true"
+        ],
+        "acceptance_criteria": [
+          "A GO_LIVE_CHECKLIST.md exists and the feature can be toggled off instantly."
+        ],
+        "outputs": ["GO_LIVE_CHECKLIST.md"]
+      }
+    ],
+    "edges": [
+      { "from": "N0", "to": "N1", "type": "depends_on" },
+      { "from": "N1", "to": "N2", "type": "depends_on" },
+      { "from": "N2", "to": "N3", "type": "depends_on" },
+      { "from": "N3", "to": "N4", "type": "depends_on" },
+      { "from": "N4", "to": "N5", "type": "depends_on" },
+      { "from": "N5", "to": "N6", "type": "depends_on" }
+    ]
+  },
+  "final_outputs_required": [
+    "VALIDATION_REPORT.md",
+    "VERTEX_INVENTORY.md",
+    "docs/ADR_0002_VERTEX_CUSTOM_MODEL.md",
+    "docs/VERTEX_INTEGRATION_GUIDE.md",
+    "GO_LIVE_CHECKLIST.md"
+  ]
+}
