@@ -1,0 +1,18 @@
+{
+  "description": "Canonical Log Event Schema for Glass Pane",
+  "fields": [
+    { "name": "event_ts", "type": "TIMESTAMP", "mode": "REQUIRED" },
+    { "name": "receive_ts", "type": "TIMESTAMP", "mode": "REQUIRED" },
+    { "name": "source_table", "type": "STRING", "mode": "NULLABLE" },
+    { "name": "resource_type", "type": "STRING", "mode": "NULLABLE" },
+    { "name": "project_id", "type": "STRING", "mode": "NULLABLE" },
+    { "name": "service", "type": "STRING", "mode": "NULLABLE" },
+    { "name": "severity", "type": "STRING", "mode": "NULLABLE" },
+    { "name": "trace", "type": "STRING", "mode": "NULLABLE" },
+    { "name": "spanId", "type": "STRING", "mode": "NULLABLE" },
+    { "name": "operation", "type": "STRING", "mode": "NULLABLE" },
+    { "name": "display_message", "type": "STRING", "mode": "NULLABLE" },
+    { "name": "json_payload_str", "type": "STRING", "mode": "NULLABLE", "description": "Serialized JSON payload" },
+    { "name": "labels_json", "type": "STRING", "mode": "NULLABLE", "description": "Serialized labels" }
+  ]
+}
