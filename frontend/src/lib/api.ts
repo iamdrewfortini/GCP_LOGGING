@@ -19,9 +19,19 @@ import {
   SavedQueriesResponseSchema,
   HealthResponseSchema,
 } from "@/types/api"
+import { getIdToken } from "@/lib/auth"
 
 // Base API URL - use relative path for Vite proxy in dev
 const API_BASE = "/api"
+
+// Get auth headers with Firebase ID token
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const token = await getIdToken()
+  if (token) {
+    return { Authorization: `Bearer ${token}` }
+  }
+  return {}
+}
 
 // ============================================
 // FETCH HELPERS
@@ -42,14 +52,19 @@ export class ApiError extends Error {
 async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {},
-  schema?: { parse: (data: unknown) => T }
+  schema?: { parse: (data: unknown) => T },
+  requiresAuth = false
 ): Promise<T> {
   const url = `${API_BASE}${endpoint}`
+
+  // Get auth headers for authenticated endpoints
+  const authHeaders = requiresAuth ? await getAuthHeaders() : {}
 
   const response = await fetch(url, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders,
       ...options.headers,
     },
   })
@@ -101,32 +116,35 @@ export async function fetchServiceStats(hours = 24): Promise<ServiceStats> {
 // ============================================
 
 export async function createSession(request: CreateSessionRequest): Promise<{ session_id: string }> {
-  return fetchApi<{ session_id: string; status: string }>("/sessions", {
-    method: "POST",
-    body: JSON.stringify(request),
-  })
+  return fetchApi<{ session_id: string; status: string }>(
+    "/sessions",
+    {
+      method: "POST",
+      body: JSON.stringify(request),
+    },
+    undefined,
+    true // requiresAuth
+  )
 }
 
 export async function fetchSessions(
-  userId: string,
   status = "active",
   limit = 50
 ): Promise<SessionsListResponse> {
   const params = new URLSearchParams({
-    user_id: userId,
     status,
     limit: String(limit),
   })
 
-  return fetchApi<SessionsListResponse>(`/sessions?${params}`, {}, SessionsListResponseSchema)
+  return fetchApi<SessionsListResponse>(`/sessions?${params}`, {}, SessionsListResponseSchema, true)
 }
 
 export async function fetchSession(sessionId: string): Promise<SessionDetailResponse> {
-  return fetchApi<SessionDetailResponse>(`/sessions/${sessionId}`, {}, SessionDetailResponseSchema)
+  return fetchApi<SessionDetailResponse>(`/sessions/${sessionId}`, {}, SessionDetailResponseSchema, true)
 }
 
 export async function archiveSession(sessionId: string): Promise<void> {
-  await fetchApi(`/sessions/${sessionId}/archive`, { method: "POST" })
+  await fetchApi(`/sessions/${sessionId}/archive`, { method: "POST" }, undefined, true)
 }
 
 // ============================================
@@ -134,22 +152,23 @@ export async function archiveSession(sessionId: string): Promise<void> {
 // ============================================
 
 export async function saveQuery(request: SaveQueryRequest): Promise<{ query_id: string }> {
-  return fetchApi<{ query_id: string; status: string }>("/saved-queries", {
-    method: "POST",
-    body: JSON.stringify(request),
-  })
+  return fetchApi<{ query_id: string; status: string }>(
+    "/saved-queries",
+    {
+      method: "POST",
+      body: JSON.stringify(request),
+    },
+    undefined,
+    true // requiresAuth
+  )
 }
 
-export async function fetchSavedQueries(
-  userId: string,
-  limit = 50
-): Promise<SavedQueriesResponse> {
+export async function fetchSavedQueries(limit = 50): Promise<SavedQueriesResponse> {
   const params = new URLSearchParams({
-    user_id: userId,
     limit: String(limit),
   })
 
-  return fetchApi<SavedQueriesResponse>(`/saved-queries?${params}`, {}, SavedQueriesResponseSchema)
+  return fetchApi<SavedQueriesResponse>(`/saved-queries?${params}`, {}, SavedQueriesResponseSchema, true)
 }
 
 // ============================================
@@ -157,10 +176,13 @@ export async function fetchSavedQueries(
 // ============================================
 
 export async function* streamChat(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
+  const authHeaders = await getAuthHeaders()
+
   const response = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders,
     },
     body: JSON.stringify(request),
   })

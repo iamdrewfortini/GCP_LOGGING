@@ -9,5 +9,5 @@ export const Route = createRoute({
 })
 
 function ChatPage() {
-  return <EnhancedChat userId="anonymous" showSidebar={true} />
+  return <EnhancedChat showSidebar={true} />
 }

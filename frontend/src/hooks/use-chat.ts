@@ -18,7 +18,7 @@ export interface ChatMessage {
   toolCalls?: ToolCall[]
 }
 
-export function useChat(userId = "anonymous") {
+export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -56,7 +56,6 @@ export function useChat(userId = "anonymous") {
         const request: ChatRequest = {
           message: content,
           session_id: sessionId || undefined,
-          user_id: userId,
           context,
         }
 
@@ -71,7 +70,7 @@ export function useChat(userId = "anonymous") {
         setIsStreaming(false)
       }
     },
-    [sessionId, userId]
+    [sessionId]
   )
 
   const handleStreamEvent = useCallback(

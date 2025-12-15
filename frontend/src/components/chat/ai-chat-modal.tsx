@@ -41,7 +41,6 @@ const QUICK_SUGGESTIONS = [
 interface AIChatModalProps {
   trigger?: React.ReactNode
   context?: Record<string, unknown>
-  userId?: string
   defaultOpen?: boolean
   onOpenChange?: (open: boolean) => void
 }
@@ -49,7 +48,6 @@ interface AIChatModalProps {
 export function AIChatModal({
   trigger,
   context = {},
-  userId = "anonymous",
   defaultOpen = false,
   onOpenChange,
 }: AIChatModalProps) {
@@ -65,7 +63,7 @@ export function AIChatModal({
     sendMessage,
     stopGeneration,
     clearMessages,
-  } = useChat(userId)
+  } = useChat()
 
   // Scroll to bottom on new messages
   useEffect(() => {

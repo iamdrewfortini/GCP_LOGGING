@@ -14,8 +14,7 @@ import type { CreateSessionRequest, SessionStatus } from "@/types/api"
 export const sessionKeys = {
   all: ["sessions"] as const,
   lists: () => [...sessionKeys.all, "list"] as const,
-  list: (userId: string, status: SessionStatus) =>
-    [...sessionKeys.lists(), userId, status] as const,
+  list: (status: SessionStatus) => [...sessionKeys.lists(), status] as const,
   details: () => [...sessionKeys.all, "detail"] as const,
   detail: (id: string) => [...sessionKeys.details(), id] as const,
 }
@@ -24,11 +23,11 @@ export const sessionKeys = {
 // HOOKS
 // ============================================
 
-export function useSessions(userId: string, status: SessionStatus = "active") {
+export function useSessions(status: SessionStatus = "active", enabled = true) {
   return useQuery({
-    queryKey: sessionKeys.list(userId, status),
-    queryFn: () => fetchSessions(userId, status),
-    enabled: !!userId,
+    queryKey: sessionKeys.list(status),
+    queryFn: () => fetchSessions(status),
+    enabled,
     staleTime: 30_000, // 30 seconds
   })
 }

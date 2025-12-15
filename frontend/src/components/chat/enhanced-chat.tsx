@@ -77,11 +77,10 @@ const SMART_SUGGESTIONS = [
 ]
 
 interface EnhancedChatProps {
-  userId?: string
   showSidebar?: boolean
 }
 
-export function EnhancedChat({ userId = "anonymous", showSidebar = true }: EnhancedChatProps) {
+export function EnhancedChat({ showSidebar = true }: EnhancedChatProps) {
   const [input, setInput] = useState("")
   const [showSuggestions, setShowSuggestions] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -95,9 +94,9 @@ export function EnhancedChat({ userId = "anonymous", showSidebar = true }: Enhan
     sendMessage,
     stopGeneration,
     clearMessages,
-  } = useChat(userId)
+  } = useChat()
 
-  const { data: sessionsData, isLoading: sessionsLoading } = useSessions(userId)
+  const { data: sessionsData, isLoading: sessionsLoading } = useSessions("active")
 
   // Scroll to bottom on new messages
   useEffect(() => {

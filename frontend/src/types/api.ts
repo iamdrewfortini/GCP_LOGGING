@@ -122,7 +122,6 @@ export const MessageSchema = z.object({
 export type Message = z.infer<typeof MessageSchema>
 
 export const CreateSessionRequestSchema = z.object({
-  user_id: z.string(),
   title: z.string(),
 })
 
@@ -160,7 +159,6 @@ export const SavedQuerySchema = z.object({
 export type SavedQuery = z.infer<typeof SavedQuerySchema>
 
 export const SaveQueryRequestSchema = z.object({
-  user_id: z.string(),
   name: z.string(),
   query_params: z.record(z.string(), z.unknown()),
 })
@@ -181,7 +179,6 @@ export type SavedQueriesResponse = z.infer<typeof SavedQueriesResponseSchema>
 export const ChatRequestSchema = z.object({
   message: z.string(),
   session_id: z.string().optional(),
-  user_id: z.string(),
   context: z.record(z.string(), z.unknown()).optional(),
 })
 

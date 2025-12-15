@@ -23,7 +23,7 @@ export const logKeys = {
 export const savedQueryKeys = {
   all: ["savedQueries"] as const,
   lists: () => [...savedQueryKeys.all, "list"] as const,
-  list: (userId: string) => [...savedQueryKeys.lists(), userId] as const,
+  list: () => [...savedQueryKeys.lists()] as const,
 }
 
 // ============================================
@@ -54,11 +54,11 @@ export function useServiceStats(hours = 24) {
   })
 }
 
-export function useSavedQueries(userId: string) {
+export function useSavedQueries(enabled = true) {
   return useQuery({
-    queryKey: savedQueryKeys.list(userId),
-    queryFn: () => fetchSavedQueries(userId),
-    enabled: !!userId,
+    queryKey: savedQueryKeys.list(),
+    queryFn: () => fetchSavedQueries(),
+    enabled,
     staleTime: 60_000, // 1 minute
   })
 }
@@ -68,10 +68,10 @@ export function useSaveQuery() {
 
   return useMutation({
     mutationFn: (request: SaveQueryRequest) => saveQuery(request),
-    onSuccess: (_data, variables) => {
-      // Invalidate saved queries list for this user
+    onSuccess: () => {
+      // Invalidate saved queries list
       queryClient.invalidateQueries({
-        queryKey: savedQueryKeys.list(variables.user_id),
+        queryKey: savedQueryKeys.list(),
       })
     },
   })
