@@ -1,0 +1,157 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function isSessionOwner(sessionId) {
+      return isAuthenticated() &&
+             get(/databases/$(database)/documents/sessions/$(sessionId)).data.userId == request.auth.uid;
+    }
+
+    function isSharedWithUser(sessionId) {
+      let session = get(/databases/$(database)/documents/sessions/$(sessionId)).data;
+      return isAuthenticated() &&
+             request.auth.uid in session.get('sharedWith', []);
+    }
+
+    // ============================================
+    // USERS COLLECTION
+    // ============================================
+    match /users/{userId} {
+      // Users can read and write their own profile
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isAuthenticated() && isOwner(userId);
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+
+    // ============================================
+    // SESSIONS COLLECTION
+    // ============================================
+    match /sessions/{sessionId} {
+      // Users can read sessions they own or that are shared with them
+      allow read: if isAuthenticated() &&
+                     (resource.data.userId == request.auth.uid ||
+                      request.auth.uid in resource.data.get('sharedWith', []));
+
+      // Only authenticated users can create sessions (and must set themselves as owner)
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid;
+
+      // Only session owner can update
+      allow update: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid;
+
+      // Only session owner can delete
+      allow delete: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid;
+
+      // ============================================
+      // MESSAGES SUBCOLLECTION
+      // ============================================
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() &&
+                       (isSessionOwner(sessionId) || isSharedWithUser(sessionId));
+
+        allow create: if isAuthenticated() &&
+                         (isSessionOwner(sessionId) || isSharedWithUser(sessionId));
+
+        // Messages are immutable once created
+        allow update, delete: if false;
+      }
+
+      // ============================================
+      // GRAPH STATES SUBCOLLECTION
+      // ============================================
+      match /graphStates/{stateId} {
+        allow read: if isAuthenticated() &&
+                       (isSessionOwner(sessionId) || isSharedWithUser(sessionId));
+
+        allow create: if isAuthenticated() &&
+                         isSessionOwner(sessionId);
+
+        // Graph states are immutable (for audit trail)
+        allow update, delete: if false;
+      }
+    }
+
+    // ============================================
+    // EMBEDDINGS COLLECTION
+    // ============================================
+    match /embeddings/{embeddingId} {
+      // All authenticated users can read embeddings (for semantic search)
+      allow read: if isAuthenticated();
+
+      // Only Cloud Functions can write embeddings
+      // (functions run with service account, not user auth)
+      allow write: if false;
+    }
+
+    // ============================================
+    // SAVED QUERIES COLLECTION
+    // ============================================
+    match /savedQueries/{queryId} {
+      // Users can only read/write their own saved queries
+      allow read: if isAuthenticated() &&
+                     resource.data.userId == request.auth.uid;
+
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid;
+
+      allow update: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid;
+
+      allow delete: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid;
+    }
+
+    // ============================================
+    // INSIGHTS COLLECTION
+    // ============================================
+    match /insights/{insightId} {
+      // All authenticated users can read insights
+      allow read: if isAuthenticated();
+
+      // Users can update to mark as acknowledged/resolved
+      allow update: if isAuthenticated() &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['status', 'acknowledgedBy', 'resolvedBy', 'resolvedAt']);
+
+      // Only Cloud Functions can create insights
+      allow create, delete: if false;
+    }
+
+    // ============================================
+    // COST ANALYTICS COLLECTION
+    // ============================================
+    match /costAnalytics/{date} {
+      // All authenticated users can read cost analytics
+      allow read: if isAuthenticated();
+
+      // Only Cloud Functions can write cost analytics
+      allow write: if false;
+    }
+
+    // ============================================
+    // ADMIN-ONLY COLLECTIONS
+    // ============================================
+    match /admin/{document=**} {
+      allow read, write: if hasRole('admin');
+    }
+  }
+}

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, Query, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from google.api_core.exceptions import BadRequest, GoogleAPICallError
 from google.cloud import bigquery
@@ -15,8 +17,14 @@ from pydantic import BaseModel, Field
 from src.agent.graph import graph
 from src.glass_pane.config import glass_config
 from src.glass_pane.query_builder import CanonicalQueryBuilder, LogQueryParams
+from src.services.firebase_service import firebase_service
 
 app = FastAPI()
+
+# Mount static files
+STATIC_DIR = Path(__file__).resolve().parents[1] / "glass_pane" / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "glass_pane" / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -44,10 +52,10 @@ async def add_security_headers(request: Request, call_next):
 
     csp = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://www.gstatic.com; "
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
         "img-src 'self' data:; "
-        "connect-src 'self' https://cdn.jsdelivr.net; "
+        "connect-src 'self' https://cdn.jsdelivr.net https://firestore.googleapis.com https://*.firebaseio.com; "
         "font-src 'self' https://cdn.jsdelivr.net;"
     )
 
@@ -61,8 +69,20 @@ async def add_security_headers(request: Request, call_next):
 
 class ChatRequest(BaseModel):
     message: str
-    run_id: Optional[str] = None
+    session_id: Optional[str] = None
+    user_id: str = "anonymous"
     context: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SessionRequest(BaseModel):
+    user_id: str
+    title: str = "New Session"
+
+
+class SaveQueryRequest(BaseModel):
+    user_id: str
+    name: str
+    query_params: Dict[str, Any]
 
 
 @app.get("/health")
@@ -298,8 +318,149 @@ def api_stats_services(
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 
+# ============================================
+# SESSION MANAGEMENT ENDPOINTS
+# ============================================
+
+
+@app.post("/api/sessions")
+def create_session(request: SessionRequest):
+    """Create a new chat session."""
+    try:
+        session_id = firebase_service.create_session(
+            user_id=request.user_id,
+            title=request.title,
+        )
+        return JSONResponse(
+            {"status": "success", "session_id": session_id},
+            status_code=201,
+        )
+    except Exception as e:
+        return JSONResponse(
+            {"status": "error", "message": str(e)},
+            status_code=500,
+        )
+
+
+@app.get("/api/sessions")
+def list_sessions(
+    user_id: str = Query(...),
+    status: str = Query(default="active"),
+    limit: int = Query(default=50, ge=1, le=100),
+):
+    """List user's chat sessions."""
+    try:
+        sessions = firebase_service.list_sessions(
+            user_id=user_id,
+            status=status,
+            limit=limit,
+        )
+        return JSONResponse({"status": "success", "sessions": sessions})
+    except Exception as e:
+        return JSONResponse(
+            {"status": "error", "message": str(e)},
+            status_code=500,
+        )
+
+
+@app.get("/api/sessions/{session_id}")
+def get_session(session_id: str):
+    """Get a specific session with its messages."""
+    try:
+        session = firebase_service.get_session(session_id)
+        if not session:
+            return JSONResponse(
+                {"status": "error", "message": "Session not found"},
+                status_code=404,
+            )
+        messages = firebase_service.get_messages(session_id)
+        return JSONResponse(
+            {"status": "success", "session": session, "messages": messages}
+        )
+    except Exception as e:
+        return JSONResponse(
+            {"status": "error", "message": str(e)},
+            status_code=500,
+        )
+
+
+@app.post("/api/sessions/{session_id}/archive")
+def archive_session(session_id: str):
+    """Archive a session."""
+    try:
+        firebase_service.archive_session(session_id)
+        return JSONResponse({"status": "success"})
+    except Exception as e:
+        return JSONResponse(
+            {"status": "error", "message": str(e)},
+            status_code=500,
+        )
+
+
+# ============================================
+# SAVED QUERIES ENDPOINTS
+# ============================================
+
+
+@app.post("/api/saved-queries")
+def save_query(request: SaveQueryRequest):
+    """Save a reusable log query."""
+    try:
+        query_id = firebase_service.save_query(
+            user_id=request.user_id,
+            name=request.name,
+            query_params=request.query_params,
+        )
+        return JSONResponse(
+            {"status": "success", "query_id": query_id},
+            status_code=201,
+        )
+    except Exception as e:
+        return JSONResponse(
+            {"status": "error", "message": str(e)},
+            status_code=500,
+        )
+
+
+@app.get("/api/saved-queries")
+def list_saved_queries(
+    user_id: str = Query(...),
+    limit: int = Query(default=50, ge=1, le=100),
+):
+    """List user's saved queries."""
+    try:
+        queries = firebase_service.list_saved_queries(user_id=user_id, limit=limit)
+        return JSONResponse({"status": "success", "queries": queries})
+    except Exception as e:
+        return JSONResponse(
+            {"status": "error", "message": str(e)},
+            status_code=500,
+        )
+
+
+# ============================================
+# AI CHAT ENDPOINT
+# ============================================
+
+
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
+    # Create or use existing session
+    session_id = request.session_id
+    if not session_id and firebase_service.enabled:
+        session_id = firebase_service.create_session(
+            user_id=request.user_id,
+            title=request.message[:50] + "..." if len(request.message) > 50 else request.message,
+        )
+
+    # Persist user message
+    if session_id and firebase_service.enabled:
+        firebase_service.add_message(
+            session_id=session_id,
+            role="user",
+            content=request.message,
+        )
+
     inputs = {
         "messages": [HumanMessage(content=request.message)],
         "scope": request.context,
@@ -307,7 +468,15 @@ async def chat(request: ChatRequest):
     }
 
     async def event_stream():
+        full_response = ""
+        tools_used: List[str] = []
+
         try:
+            # Send session info first
+            if session_id:
+                session_payload = {"type": "session", "data": {"session_id": session_id}}
+                yield f"data: {json.dumps(session_payload)}\n\n"
+
             async for event in graph.astream_events(inputs, version="v2"):
                 kind = event["event"]
 
@@ -316,12 +485,15 @@ async def chat(request: ChatRequest):
                 if kind == "on_chat_model_stream":
                     content = event["data"]["chunk"].content
                     if content:
+                        full_response += content
                         payload["data"] = {"content": content}
                         yield f"data: {json.dumps(payload)}\n\n"
 
                 elif kind == "on_tool_start":
+                    tool_name = event["name"]
+                    tools_used.append(tool_name)
                     payload["data"] = {
-                        "tool": event["name"],
+                        "tool": tool_name,
                         "input": event["data"].get("input"),
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
@@ -338,6 +510,18 @@ async def chat(request: ChatRequest):
                         output_data = output
                     payload["data"] = {"output": output_data}
                     yield f"data: {json.dumps(payload)}\n\n"
+
+            # Persist assistant response
+            if session_id and firebase_service.enabled and full_response:
+                firebase_service.add_message(
+                    session_id=session_id,
+                    role="assistant",
+                    content=full_response,
+                    metadata={
+                        "tools_used": tools_used,
+                        "word_count": len(full_response.split()),
+                    },
+                )
 
         except Exception as e:
             import traceback

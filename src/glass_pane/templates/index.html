@@ -6,6 +6,7 @@
     <title>Glass Pane - Organization Log Viewer</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/design-system.css">
     <style>
         body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
         .log-container { margin-top: 20px; }
@@ -350,6 +351,10 @@
         // Store logs data for detail view
         const logsData = {{ rows | tojson | safe }};
 
+        // Session management
+        let currentSessionId = null;
+        const userId = 'anonymous-' + Math.random().toString(36).substring(7);
+
         function createElementWithText(tag, text) {
             const el = document.createElement(tag);
             el.textContent = text;
@@ -538,12 +543,23 @@
             sendBtn.appendChild(spinner);
 
             try {
+                const requestBody = {
+                    message: message,
+                    user_id: userId,
+                    context: {}
+                };
+
+                // Include session_id if we have one
+                if (currentSessionId) {
+                    requestBody.session_id = currentSessionId;
+                }
+
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ message: message, context: {} })
+                    body: JSON.stringify(requestBody)
                 });
 
                 if (!response.ok) {
@@ -570,7 +586,10 @@
                             try {
                                 const event = JSON.parse(data);
 
-                                if (event.type === 'on_chat_model_stream' && event.data.content) {
+                                if (event.type === 'session' && event.data.session_id) {
+                                    // Store session ID for subsequent messages
+                                    currentSessionId = event.data.session_id;
+                                } else if (event.type === 'on_chat_model_stream' && event.data.content) {
                                     if (!aiMessageDiv) {
                                         aiMessageDiv = addChatMessage('', 'assistant');
                                     }

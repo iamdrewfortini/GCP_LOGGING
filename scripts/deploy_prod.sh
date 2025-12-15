@@ -2,8 +2,8 @@
 set -e
 
 # Configuration
-SERVICE_NAME="glass-pane-agent"
-JOB_NAME="finops-nightly-rollup"
+SERVICE_NAME="${SERVICE_NAME:-glass-pane}"
+JOB_NAME="${JOB_NAME:-finops-nightly-rollup}"
 REGION="${REGION:-us-central1}"
 # GCP project to deploy into (required)
 PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null || true)}"
@@ -71,6 +71,7 @@ gcloud run deploy ${SERVICE_NAME} \
     --set-env-vars PROJECT_ID_AGENT=${PROJECT_ID} \
     --set-env-vars PROJECT_ID_LOGS=${PROJECT_ID} \
     --set-env-vars PROJECT_ID_FINOPS=${PROJECT_ID} \
+    --set-env-vars CANONICAL_VIEW=org_observability.logs_canonical_v2 \
     --set-env-vars BQ_LOCATION=US \
     --set-env-vars VERTEX_ENABLED=true \
     --set-env-vars VERTEX_REGION=${REGION} \

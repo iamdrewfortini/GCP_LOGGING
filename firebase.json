@@ -1,0 +1,28 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [{
+    "source": "functions/firebase",
+    "codebase": "default",
+    "runtime": "python312",
+    "ignore": [
+      "venv",
+      ".git",
+      "__pycache__"
+    ]
+  }],
+  "emulators": {
+    "firestore": {
+      "port": 8081
+    },
+    "functions": {
+      "port": 5001
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    }
+  }
+}

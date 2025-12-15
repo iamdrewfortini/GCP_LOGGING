@@ -4,6 +4,8 @@ jinja2
 google-cloud-bigquery
 google-cloud-logging
 google-cloud-billing
+google-cloud-aiplatform
+firebase-admin>=6.4.0
 langchain-core
 langchain-google-genai
 langgraph

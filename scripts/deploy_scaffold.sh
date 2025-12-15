@@ -36,13 +36,30 @@ fi
 gcloud storage buckets update gs://$BUCKET_NAME --lifecycle-file="$(pwd)/config/gcs_lifecycle.json" || true
 echo " -> Lifecycle policy applied."
 
-# 2. Create/Verify BigQuery Dataset
+# 2. Create/Verify BigQuery Dataset (raw sink tables)
 echo "[2/9] Configuring BigQuery Dataset: $DATASET_NAME"
 if ! bq show "$PROJECT_ID:$DATASET_NAME" >/dev/null 2>&1; then
     bq mk --dataset --description "Centralized Organization Logging" --location=US "$PROJECT_ID:$DATASET_NAME"
     echo " -> Dataset created."
 else
     echo " -> Dataset exists."
+fi
+
+# 2b. Create/Verify BigQuery Dataset for canonical views
+OBS_DATASET="org_observability"
+if ! bq show "$PROJECT_ID:$OBS_DATASET" >/dev/null 2>&1; then
+    bq mk --dataset --description "Organization Observability (canonical views)" --location=US "$PROJECT_ID:$OBS_DATASET"
+    echo " -> Dataset $OBS_DATASET created."
+else
+    echo " -> Dataset $OBS_DATASET exists."
+fi
+
+# Apply canonical contract view (idempotent)
+# NOTE: infra/bigquery/02_canonical_contract_v2_fixed.sql currently contains a hard-coded project name.
+# This scaffold script is also hard-coded to PROJECT_ID=diatonic-ai-gcp.
+if [[ -f "infra/bigquery/02_canonical_contract_v2_fixed.sql" ]]; then
+    echo " -> Applying canonical view: $PROJECT_ID.$OBS_DATASET.logs_canonical_v2"
+    bq query --nouse_legacy_sql < "infra/bigquery/02_canonical_contract_v2_fixed.sql" || true
 fi
 
 # 3. Create/Verify Pub/Sub Topic
@@ -106,17 +123,21 @@ gcloud pubsub topics add-iam-policy-binding $TOPIC_NAME --project=$PROJECT_ID --
 echo "[7/9] Building and Deploying Cloud Run Service: $SERVICE_NAME"
 # Generate a unique build ID
 BUILD_ID=$(date +%s)
-# Build container image
-gcloud builds submit app/glass-pane --tag gcr.io/$PROJECT_ID/$SERVICE_NAME:$BUILD_ID --project=$PROJECT_ID
+# Build container image (unified FastAPI service at repo root)
+gcloud builds submit . --tag gcr.io/$PROJECT_ID/$SERVICE_NAME:$BUILD_ID --project=$PROJECT_ID
 
 # Deploy to Cloud Run
+# This single service serves:
+# - UI routes (/)
+# - log APIs (/api/logs, /api/stats/*)
+# - agent streaming endpoint (/api/chat)
 gcloud run deploy $SERVICE_NAME \
     --image gcr.io/$PROJECT_ID/$SERVICE_NAME:$BUILD_ID \
     --platform managed \
     --region $REGION \
     --allow-unauthenticated \
     --project=$PROJECT_ID \
-    --set-env-vars PROJECT_ID=$PROJECT_ID,DATASET_ID=$DATASET_NAME \
+    --set-env-vars PROJECT_ID_LOGS=$PROJECT_ID,PROJECT_ID_AGENT=$PROJECT_ID,PROJECT_ID_FINOPS=$PROJECT_ID,BQ_LOCATION=US,VERTEX_ENABLED=true,VERTEX_REGION=$REGION,GOOGLE_GENAI_USE_VERTEXAI=true,CANONICAL_VIEW=org_observability.logs_canonical_v2 \
     --cpu=1 \
     --memory=512Mi \
     --timeout=300 \

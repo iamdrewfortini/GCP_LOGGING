@@ -19,8 +19,8 @@ Logs are routed into tables based on their resource type or log name (e.g., `sys
 - **Canonical View:** A BigQuery View `view_canonical_logs` unifies these tables into a single schema (`event_ts`, `severity`, `service`, `message`, `json_payload_str`) to simplify querying.
 
 ### 3. Query Layer (Glass Pane)
-The "Glass Pane" is a Python Flask application running on Cloud Run.
-- **Canonical View Usage:** Queries the `view_canonical_logs` for all log retrieval, simplifying frontend logic.
+The "Glass Pane" is a Python FastAPI application running on Cloud Run.
+- **Canonical View Usage:** Queries a canonical BigQuery view (e.g. `org_observability.logs_canonical_v2`) for log retrieval, simplifying UI/backend logic.
 - **API Endpoints:**
     - `GET /api/logs`: Fetches paginated, filterable log entries.
     - `GET /api/logs/:id`: (Future) Fetches a single log entry by ID.
