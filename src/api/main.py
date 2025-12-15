@@ -22,6 +22,10 @@ from src.services.redis_service import redis_service
 from src.services.qdrant_service import qdrant_service
 from src.services.dual_write_service import dual_write_service, ChatEvent, ToolInvocation
 from src.api.auth import get_current_user_uid
+from src.api.etl_routes import router as etl_router
+from strawberry.fastapi import GraphQLRouter
+from src.api.graphql.schema import schema
+from src.api.graphql.context import get_context
 
 app = FastAPI(
     title="Glass Pane API",
@@ -50,6 +54,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include ETL routes
+app.include_router(etl_router)
+
+# Include GraphQL routes
+app.include_router(GraphQLRouter(schema, context_getter=get_context), prefix="/graphql", tags=["graphql"])
 
 _bq_client: Optional[bigquery.Client] = None
 
@@ -122,6 +132,7 @@ def api_root():
         "endpoints": {
             "health": "/health",
             "logs": "/api/logs",
+            "logs_v2": "/api/v2/logs (supports envelope=true for Universal Envelope)",
             "stats": {
                 "severity": "/api/stats/severity",
                 "services": "/api/stats/services",
@@ -188,6 +199,88 @@ def api_logs(
                 row["event_timestamp"] = row["event_timestamp"].isoformat()
 
         return JSONResponse({"status": "success", "count": len(rows), "data": rows})
+
+    except BadRequest as e:
+        return JSONResponse(
+            {"status": "error", "error_type": "bigquery_error", "message": e.message},
+            status_code=400,
+        )
+    except GoogleAPICallError as e:
+        return JSONResponse(
+            {"status": "error", "error_type": "bigquery_error", "message": str(e)},
+            status_code=500,
+        )
+    except Exception as e:
+        return JSONResponse(
+            {"status": "error", "error_type": "internal_error", "message": str(e)},
+            status_code=500,
+        )
+
+
+@app.get("/api/v2/logs")
+def api_logs_v2(
+    hours: int = Query(default=glass_config.default_time_window_hours, ge=1),
+    limit: int = Query(default=glass_config.default_limit, ge=1),
+    severity: Optional[str] = Query(default=None),
+    service: Optional[str] = Query(default=None),
+    search: Optional[str] = Query(default=None),
+    source_table: Optional[str] = Query(default=None),
+    envelope: bool = Query(default=False, description="Include Universal Data Envelope fields"),
+):
+    """
+    Get logs with optional Universal Data Envelope support.
+
+    When envelope=true, queries the canonical view and includes
+    envelope fields like environment, PII risk, and correlation IDs.
+    """
+    try:
+        client = get_bq_client()
+        builder = get_query_builder()
+
+        safe_hours = min(hours, glass_config.max_time_window_hours)
+        safe_limit = min(limit, glass_config.max_limit)
+
+        params = LogQueryParams(
+            limit=safe_limit,
+            hours=safe_hours,
+            severity=severity or None,
+            service=service or None,
+            search=search or None,
+            source_table=source_table or None,
+        )
+
+        errors = params.validate(
+            max_limit=glass_config.max_limit,
+            max_hours=glass_config.max_time_window_hours,
+        )
+        if errors:
+            return JSONResponse(
+                {
+                    "status": "error",
+                    "error_type": "validation_error",
+                    "errors": errors,
+                },
+                status_code=400,
+            )
+
+        # Use envelope parameter to include Universal Envelope fields
+        query = builder.build_list_query(params, use_envelope=envelope)
+        job_config = bigquery.QueryJobConfig(query_parameters=query["params"])
+        job = client.query(query["sql"], job_config=job_config)
+        rows = [dict(row) for row in job]
+
+        for row in rows:
+            if row.get("event_timestamp"):
+                row["event_timestamp"] = row["event_timestamp"].isoformat()
+            if row.get("envelope_event_ts"):
+                row["envelope_event_ts"] = row["envelope_event_ts"].isoformat()
+
+        return JSONResponse({
+            "status": "success",
+            "count": len(rows),
+            "envelope_enabled": envelope,
+            "data": rows
+        })
 
     except BadRequest as e:
         return JSONResponse(
