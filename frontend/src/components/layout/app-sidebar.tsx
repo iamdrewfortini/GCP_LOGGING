@@ -13,8 +13,11 @@ import {
   ChevronDown,
   Box,
   Activity,
+  LogOut,
+  User,
 } from "lucide-react"
 import { Link, useRouterState } from "@tanstack/react-router"
+import { useAuth } from "@/contexts/AuthContext"
 
 import {
   Sidebar,
@@ -76,6 +79,7 @@ const toolsItems = [
 export function AppSidebar() {
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
+  const { user, logout } = useAuth()
 
   const isActive = (url: string) => {
     if (url === "/") return currentPath === "/"
@@ -186,6 +190,34 @@ export function AppSidebar() {
                 <Settings className="size-4" />
                 <span>Settings</span>
               </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          {/* User info and logout */}
+          <SidebarMenuItem>
+            <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground">
+              {user?.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt=""
+                  className="size-6 rounded-full"
+                />
+              ) : (
+                <User className="size-4" />
+              )}
+              <span className="truncate flex-1 text-xs">
+                {user?.email || user?.displayName || "User"}
+              </span>
+            </div>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={logout}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="size-4" />
+              <span>Sign out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

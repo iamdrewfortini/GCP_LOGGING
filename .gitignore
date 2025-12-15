@@ -63,3 +63,4 @@ output_path
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+.SECRETS/
