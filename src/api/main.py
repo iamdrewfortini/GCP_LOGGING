@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, Query, Request, Response, Depends
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from google.api_core.exceptions import BadRequest, GoogleAPICallError
 from google.cloud import bigquery
 from langchain_core.messages import HumanMessage, ToolMessage
@@ -19,6 +20,7 @@ from src.glass_pane.query_builder import CanonicalQueryBuilder, LogQueryParams
 from src.services.firebase_service import firebase_service
 from src.services.redis_service import redis_service
 from src.services.qdrant_service import qdrant_service
+from src.services.dual_write_service import dual_write_service, ChatEvent, ToolInvocation
 from src.api.auth import get_current_user_uid
 
 app = FastAPI(
@@ -109,8 +111,8 @@ def health():
     }
 
 
-@app.get("/")
-def root():
+@app.get("/api")
+def api_root():
     """API root - returns API info and available endpoints."""
     return {
         "name": "Glass Pane API",
@@ -420,9 +422,47 @@ def list_saved_queries(
 
 import uuid
 import logging
+from datetime import datetime, timezone
 from src.security.redaction import redactor
+from src.agent.nodes import get_token_manager, reset_token_manager, update_token_budget
+from src.agent.state import AgentState
 
 logger = logging.getLogger(__name__)
+
+
+def create_token_count_event(
+    phase: str,
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+    total_tokens: int = 0,
+    remaining: int = 100_000,
+    budget_max: int = 100_000,
+) -> dict:
+    """Create a token_count SSE event payload.
+
+    Args:
+        phase: Current phase (ingress, retrieval, model_stream, tool, finalize)
+        prompt_tokens: Input/prompt token count
+        completion_tokens: Output/completion token count
+        total_tokens: Total token count
+        remaining: Remaining budget
+        budget_max: Maximum budget
+
+    Returns:
+        Token count event payload
+    """
+    return {
+        "type": "token_count",
+        "data": {
+            "prompt": prompt_tokens,
+            "completion": completion_tokens,
+            "total": total_tokens,
+            "remaining": remaining,
+            "budget_max": budget_max,
+            "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "phase": phase,
+        },
+    }
 
 @app.post("/api/chat")
 async def chat(
@@ -453,19 +493,22 @@ async def chat(
             title=request.message[:50] + "..." if len(request.message) > 50 else request.message,
         )
 
-    # Persist user message to Firebase for immediate UI sync
-    if session_id and firebase_service.enabled:
-        firebase_service.add_message(
+    # Persist user message using dual-write service (hot + cold paths)
+    if session_id:
+        user_event = ChatEvent.create_message_event(
             session_id=session_id,
+            user_id=current_user_uid,
             role="user",
             content=request.message,
         )
+        dual_write_service.write_event(user_event, firebase_service=firebase_service)
+
         # Enqueue for async embedding and Qdrant storage
         redis_service.enqueue(
             "q:embeddings:realtime",
             {
                 "session_id": session_id,
-                "project_id": current_user_uid, # Using user_id as project_id for now
+                "project_id": current_user_uid,
                 "role": "user",
                 "content": request.message,
             },
@@ -480,12 +523,34 @@ async def chat(
     async def event_stream():
         full_response = ""
         tools_used: List[str] = []
+        completion_tokens = 0
+        active_tool_invocation: Optional[ToolInvocation] = None
+
+        # Reset and get token manager for this request
+        reset_token_manager()
+        token_manager = get_token_manager()
+
+        # Track initial user message tokens (ingress phase)
+        user_msg_tokens = token_manager.count_tokens(request.message) + 4  # +4 for message overhead
+        token_manager.reserve_tokens(user_msg_tokens)
 
         try:
             # Send session info first
             if session_id:
                 session_payload = {"type": "session", "data": {"session_id": session_id}}
                 yield f"data: {json.dumps(session_payload)}\n\n"
+
+            # Emit initial token_count event (ingress phase)
+            status = token_manager.get_budget_status()
+            ingress_event = create_token_count_event(
+                phase="ingress",
+                prompt_tokens=status["tokens_used"],
+                completion_tokens=0,
+                total_tokens=status["tokens_used"],
+                remaining=status["tokens_remaining"],
+                budget_max=status["max_tokens"],
+            )
+            yield f"data: {json.dumps(ingress_event)}\n\n"
 
             async for event in graph.astream_events(inputs, version="v2"):
                 kind = event["event"]
@@ -512,53 +577,157 @@ async def chat(
 
                         if content:
                             full_response += content
+
+                            # Track completion tokens (approximate by counting chunk tokens)
+                            chunk_tokens = token_manager.count_tokens(content)
+                            completion_tokens += chunk_tokens
+
                             payload["data"] = {"content": content}
                             yield f"data: {json.dumps(payload)}\n\n"
+
+                            # Emit token_count event periodically during streaming (every ~50 tokens)
+                            if completion_tokens % 50 < chunk_tokens:
+                                status = token_manager.get_budget_status()
+                                stream_event = create_token_count_event(
+                                    phase="model_stream",
+                                    prompt_tokens=status["tokens_used"],
+                                    completion_tokens=completion_tokens,
+                                    total_tokens=status["tokens_used"] + completion_tokens,
+                                    remaining=status["tokens_remaining"] - completion_tokens,
+                                    budget_max=status["max_tokens"],
+                                )
+                                yield f"data: {json.dumps(stream_event)}\n\n"
 
                 elif kind == "on_tool_start":
                     tool_name = event["name"]
                     tools_used.append(tool_name)
                     # Redact tool input
-                    safe_input = redactor.scrub_data(event["data"].get("input"))
+                    tool_input = event["data"].get("input", {})
+                    safe_input = redactor.scrub_data(tool_input)
                     payload["data"] = {
                         "tool": tool_name,
                         "input": safe_input,
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
 
+                    # Start tool invocation tracking for dual-write
+                    if session_id:
+                        active_tool_invocation = ToolInvocation.start(
+                            session_id=session_id,
+                            user_id=current_user_uid,
+                            tool_name=tool_name,
+                            input_args=safe_input if isinstance(safe_input, dict) else {"raw": str(safe_input)},
+                        )
+
+                    # Emit token_count event for tool start
+                    status = token_manager.get_budget_status()
+                    tool_start_event = create_token_count_event(
+                        phase="tool",
+                        prompt_tokens=status["tokens_used"],
+                        completion_tokens=completion_tokens,
+                        total_tokens=status["tokens_used"] + completion_tokens,
+                        remaining=status["tokens_remaining"] - completion_tokens,
+                        budget_max=status["max_tokens"],
+                    )
+                    yield f"data: {json.dumps(tool_start_event)}\n\n"
+
                 elif kind == "on_tool_end":
                     output = event["data"].get("output")
+                    output_summary = None
                     if isinstance(output, ToolMessage):
                         output_data = {
                             "content": output.content,
                             "name": output.name,
                             "tool_call_id": output.tool_call_id,
                         }
+                        output_summary = str(output.content)[:200] if output.content else None
+                        # Track tool output tokens
+                        tool_output_tokens = token_manager.count_tokens(str(output.content))
+                        try:
+                            token_manager.reserve_tokens(tool_output_tokens)
+                        except Exception:
+                            pass  # Don't fail on token budget exceeded during tool output
                     else:
                         output_data = output
-                    
+                        output_summary = str(output)[:200] if output else None
+                        # Track tool output tokens
+                        tool_output_tokens = token_manager.count_tokens(str(output))
+                        try:
+                            token_manager.reserve_tokens(tool_output_tokens)
+                        except Exception:
+                            pass
+
+                    # Complete tool invocation and write to dual-write
+                    if active_tool_invocation:
+                        active_tool_invocation.complete(
+                            output_summary=output_summary,
+                            tokens_used=tool_output_tokens,
+                        )
+                        dual_write_service.write_tool_invocation(active_tool_invocation)
+                        active_tool_invocation = None
+
                     # Redact tool output
                     safe_output = redactor.scrub_data(output_data)
                     payload["data"] = {"output": safe_output}
                     yield f"data: {json.dumps(payload)}\n\n"
 
-            # Persist assistant response to Firebase for immediate UI sync
-            if session_id and firebase_service.enabled and full_response:
-                firebase_service.add_message(
+                    # Emit token_count event after tool completion
+                    status = token_manager.get_budget_status()
+                    tool_end_event = create_token_count_event(
+                        phase="tool",
+                        prompt_tokens=status["tokens_used"],
+                        completion_tokens=completion_tokens,
+                        total_tokens=status["tokens_used"] + completion_tokens,
+                        remaining=status["tokens_remaining"] - completion_tokens,
+                        budget_max=status["max_tokens"],
+                    )
+                    yield f"data: {json.dumps(tool_end_event)}\n\n"
+
+            # Reserve completion tokens in the manager
+            try:
+                token_manager.reserve_tokens(completion_tokens)
+            except Exception:
+                pass  # Don't fail on budget exceeded at finalize
+
+            # Get final token budget status
+            final_status = token_manager.get_budget_status()
+
+            # Emit final token_count event (finalize phase)
+            finalize_event = create_token_count_event(
+                phase="finalize",
+                prompt_tokens=final_status["tokens_used"] - completion_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=final_status["tokens_used"],
+                remaining=final_status["tokens_remaining"],
+                budget_max=final_status["max_tokens"],
+            )
+            yield f"data: {json.dumps(finalize_event)}\n\n"
+
+            # Persist assistant response using dual-write service (hot + cold paths)
+            if session_id and full_response:
+                assistant_event = ChatEvent.create_message_event(
                     session_id=session_id,
+                    user_id=current_user_uid,
                     role="assistant",
                     content=full_response,
                     metadata={
                         "tools_used": tools_used,
                         "word_count": len(full_response.split()),
                     },
+                    token_usage={
+                        "prompt_tokens": final_status["tokens_used"] - completion_tokens,
+                        "completion_tokens": completion_tokens,
+                        "total_tokens": final_status["tokens_used"],
+                    },
                 )
+                dual_write_service.write_event(assistant_event, firebase_service=firebase_service)
+
                 # Enqueue for async embedding and Qdrant storage
                 redis_service.enqueue(
                     "q:embeddings:realtime",
                     {
                         "session_id": session_id,
-                        "project_id": current_user_uid,  # Using user_id as project_id for now
+                        "project_id": current_user_uid,
                         "role": "assistant",
                         "content": full_response,
                     },
@@ -569,7 +738,7 @@ async def chat(
             error_id = str(uuid.uuid4())
             # Log full details server-side
             logger.error(f"Error in event_stream (ref: {error_id}): {e}\n{traceback.format_exc()}")
-            
+
             # Return safe error to client
             error_details = {
                 "message": "An internal error occurred processing your request.",
@@ -578,9 +747,40 @@ async def chat(
             err_payload = {"type": "error", "data": error_details}
             yield f"data: {json.dumps(err_payload)}\n\n"
 
+        finally:
+            # Clean up token manager
+            reset_token_manager()
+
         yield "event: end\ndata: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+# Mount static files for frontend (must be after all routes)
+frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    # Mount static assets
+    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+    
+    # SPA fallback - serve index.html for all non-API routes
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        """Serve frontend SPA or fallback to index.html for client-side routing."""
+        # Don't interfere with API routes
+        if full_path.startswith(("api/", "health", "docs", "openapi.json", "redoc")):
+            return Response(status_code=404)
+        
+        # Try to serve the requested file
+        file_path = frontend_dist / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        
+        # Fallback to index.html for SPA routing
+        index_path = frontend_dist / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        
+        return Response(status_code=404)
 
 
 if __name__ == "__main__":
