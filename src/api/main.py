@@ -89,6 +89,23 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/debug/paths")
+def debug_paths():
+    """Debug endpoint to check file paths."""
+    import os
+    static_dir = Path(__file__).resolve().parents[1] / "glass_pane" / "static"
+    css_file = static_dir / "css" / "design-system.css"
+    return {
+        "cwd": os.getcwd(),
+        "__file__": str(Path(__file__).resolve()),
+        "static_dir": str(static_dir),
+        "static_exists": static_dir.exists(),
+        "css_file": str(css_file),
+        "css_exists": css_file.exists(),
+        "static_contents": os.listdir(static_dir) if static_dir.exists() else [],
+    }
+
+
 @app.get("/favicon.ico")
 def favicon():
     return Response(status_code=204)
