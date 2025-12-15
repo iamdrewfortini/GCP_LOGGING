@@ -130,6 +130,11 @@ def index(
         job = client.query(query["sql"], job_config=job_config)
         rows = [dict(row) for row in job]
 
+        # Convert datetime objects to ISO strings for JSON serialization
+        for row in rows:
+            if row.get("event_timestamp"):
+                row["event_timestamp_iso"] = row["event_timestamp"].isoformat()
+
         stats_query = builder.build_source_table_stats_query(hours=safe_hours)
         stats_job = client.query(
             stats_query["sql"],

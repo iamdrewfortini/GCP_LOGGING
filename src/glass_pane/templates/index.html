@@ -376,7 +376,7 @@
             basicInfoTable.className = 'table table-sm';
 
             const basicInfoData = [
-                ['Timestamp', log.event_timestamp || 'N/A'],
+                ['Timestamp', log.event_timestamp_iso || log.event_timestamp || 'N/A'],
                 ['Severity', log.severity || 'N/A'],
                 ['Service', log.service_name || 'N/A'],
                 ['Log Name', log.log_name || 'N/A'],
