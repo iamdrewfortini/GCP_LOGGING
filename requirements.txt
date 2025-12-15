@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+jinja2
 google-cloud-bigquery
 google-cloud-logging
 google-cloud-billing
