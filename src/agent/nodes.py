@@ -1,12 +1,12 @@
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from src.agent.state import AgentState
 from src.agent.llm import get_llm
-from src.agent.tools.definitions import bq_query_tool, search_logs_tool, runbook_search_tool
+from src.agent.tools.definitions import bq_query_tool, search_logs_tool, runbook_search_tool, trace_lookup_tool, service_health_tool, repo_search_tool, create_view_tool, dashboard_spec_tool
 from langgraph.prebuilt import ToolNode
 from src.agent.persistence import persist_agent_run
 import json
 
-tools = [bq_query_tool, search_logs_tool, runbook_search_tool]
+tools = [bq_query_tool, search_logs_tool, runbook_search_tool, trace_lookup_tool, service_health_tool, repo_search_tool, create_view_tool, dashboard_spec_tool]
 llm = get_llm().bind_tools(tools)
 
 def diagnose_node(state: AgentState):

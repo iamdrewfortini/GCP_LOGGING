@@ -13,5 +13,6 @@ class AgentState(TypedDict):
     cost_summary: Dict[str, Any]
     runbook_ids: List[str]
     phase: str
+    mode: str
     status: str
     error: Optional[str]

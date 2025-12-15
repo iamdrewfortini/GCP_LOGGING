@@ -1,14 +1,21 @@
-"""Firebase service for session and message persistence."""
+"""Firebase service for session and message persistence.
+
+Supports both production Firestore and local emulator for development.
+Set FIRESTORE_EMULATOR_HOST=localhost:8181 to use the emulator.
+"""
 
 from __future__ import annotations
 
 import os
+import logging
 from datetime import datetime
 from typing import Any, Optional
 
 import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
+
+logger = logging.getLogger(__name__)
 
 
 def _serialize_firestore_doc(doc: dict[str, Any]) -> dict[str, Any]:
@@ -54,11 +61,22 @@ class FirebaseService:
 
     @classmethod
     def _initialize_firebase(cls) -> None:
-        """Initialize Firebase Admin SDK."""
+        """Initialize Firebase Admin SDK.
+
+        Automatically connects to Firestore emulator if FIRESTORE_EMULATOR_HOST is set.
+        """
+        emulator_host = os.getenv("FIRESTORE_EMULATOR_HOST")
+        project_id = os.getenv("PROJECT_ID", "diatonic-ai-gcp")
+
+        if emulator_host:
+            logger.info(f"🔥 Connecting to Firestore emulator at {emulator_host}")
+            print(f"🔥 Firebase: Using Firestore emulator at {emulator_host}")
+        else:
+            logger.info(f"🔥 Connecting to production Firestore for project {project_id}")
+            print(f"🔥 Firebase: Using production Firestore for project {project_id}")
+
         if not firebase_admin._apps:
-            # In Cloud Run, use Application Default Credentials
-            # Locally, use GOOGLE_APPLICATION_CREDENTIALS env var
-            project_id = os.getenv("PROJECT_ID", "diatonic-ai-gcp")
+            # Initialize without credentials for emulator, with ADC for production
             firebase_admin.initialize_app(options={"projectId": project_id})
 
         cls._db = firestore.client()
@@ -74,6 +92,11 @@ class FirebaseService:
     def enabled(self) -> bool:
         """Check if Firebase is enabled."""
         return os.getenv("FIREBASE_ENABLED", "true").lower() == "true"
+
+    @property
+    def using_emulator(self) -> bool:
+        """Check if using Firestore emulator."""
+        return bool(os.getenv("FIRESTORE_EMULATOR_HOST"))
 
     # ============================================
     # SESSION MANAGEMENT

@@ -56,3 +56,8 @@ argument_schema_workflow.yaml
 argument_schema_workflow_fixed.md
 install_argument_schema_fixed.sh
 output_path
+
+# Firebase emulator logs
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
