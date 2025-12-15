@@ -12,6 +12,9 @@ env:
   SERVICE_NAME: ${{ vars.SERVICE_NAME }}
   SERVICE_ACCOUNT: ${{ vars.SERVICE_ACCOUNT }}
   CANONICAL_VIEW: ${{ vars.CANONICAL_VIEW }}
+  REDIS_HOST: ${{ vars.REDIS_HOST }}
+  REDIS_PORT: ${{ vars.REDIS_PORT }}
+  QDRANT_URL: ${{ vars.QDRANT_URL }}
 
 jobs:
   test:
@@ -64,6 +67,37 @@ jobs:
         run: |
           gcloud auth configure-docker
 
+      - name: Setup Secret Manager secrets
+        run: |
+          # Create or update Redis password in Secret Manager
+          if gcloud secrets describe REDIS_PASSWORD --project=${{ env.GCP_PROJECT_ID }} >/dev/null 2>&1; then
+            echo "Updating REDIS_PASSWORD secret..."
+            echo -n "${{ secrets.REDIS_PASSWORD }}" | gcloud secrets versions add REDIS_PASSWORD --data-file=- --project=${{ env.GCP_PROJECT_ID }}
+          else
+            echo "Creating REDIS_PASSWORD secret..."
+            echo -n "${{ secrets.REDIS_PASSWORD }}" | gcloud secrets create REDIS_PASSWORD --data-file=- --replication-policy=automatic --project=${{ env.GCP_PROJECT_ID }}
+          fi
+
+          # Create or update Qdrant API key in Secret Manager
+          if gcloud secrets describe QDRANT_API_KEY --project=${{ env.GCP_PROJECT_ID }} >/dev/null 2>&1; then
+            echo "Updating QDRANT_API_KEY secret..."
+            echo -n "${{ secrets.QDRANT_API_KEY }}" | gcloud secrets versions add QDRANT_API_KEY --data-file=- --project=${{ env.GCP_PROJECT_ID }}
+          else
+            echo "Creating QDRANT_API_KEY secret..."
+            echo -n "${{ secrets.QDRANT_API_KEY }}" | gcloud secrets create QDRANT_API_KEY --data-file=- --replication-policy=automatic --project=${{ env.GCP_PROJECT_ID }}
+          fi
+
+          # Grant the service account access to secrets
+          gcloud secrets add-iam-policy-binding REDIS_PASSWORD \
+            --member="serviceAccount:${{ env.SERVICE_ACCOUNT }}" \
+            --role="roles/secretmanager.secretAccessor" \
+            --project=${{ env.GCP_PROJECT_ID }}
+
+          gcloud secrets add-iam-policy-binding QDRANT_API_KEY \
+            --member="serviceAccount:${{ env.SERVICE_ACCOUNT }}" \
+            --role="roles/secretmanager.secretAccessor" \
+            --project=${{ env.GCP_PROJECT_ID }}
+
       - name: Build Docker image
         run: |
           docker build -t gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} -t gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest .
@@ -75,7 +109,21 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy ${{ env.SERVICE_NAME }} --image gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} --platform managed --region ${{ env.GCP_REGION }} --allow-unauthenticated --service-account ${{ env.SERVICE_ACCOUNT }} --set-env-vars PROJECT_ID=${{ env.GCP_PROJECT_ID }},PROJECT_ID_LOGS=${{ env.GCP_PROJECT_ID }},PROJECT_ID_AGENT=${{ env.GCP_PROJECT_ID }},PROJECT_ID_FINOPS=${{ env.GCP_PROJECT_ID }},CANONICAL_VIEW=${{ env.CANONICAL_VIEW }},BQ_LOCATION=US,VERTEX_ENABLED=true,VERTEX_REGION=${{ env.GCP_REGION }},GOOGLE_GENAI_USE_VERTEXAI=true,FIREBASE_ENABLED=true --cpu 1 --memory 512Mi --timeout 300 --min-instances 0 --max-instances 2 --port 8080 --quiet
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            --platform managed \
+            --region ${{ env.GCP_REGION }} \
+            --allow-unauthenticated \
+            --service-account ${{ env.SERVICE_ACCOUNT }} \
+            --set-env-vars PROJECT_ID=${{ env.GCP_PROJECT_ID }},PROJECT_ID_LOGS=${{ env.GCP_PROJECT_ID }},PROJECT_ID_AGENT=${{ env.GCP_PROJECT_ID }},PROJECT_ID_FINOPS=${{ env.GCP_PROJECT_ID }},CANONICAL_VIEW=${{ env.CANONICAL_VIEW }},BQ_LOCATION=US,VERTEX_ENABLED=true,VERTEX_REGION=${{ env.GCP_REGION }},GOOGLE_GENAI_USE_VERTEXAI=true,FIREBASE_ENABLED=true,REDIS_HOST=${{ env.REDIS_HOST }},REDIS_PORT=${{ env.REDIS_PORT }},REDIS_USERNAME=default,QDRANT_URL=${{ env.QDRANT_URL }} \
+            --set-secrets REDIS_PASSWORD=REDIS_PASSWORD:latest,QDRANT_API_KEY=QDRANT_API_KEY:latest \
+            --cpu 1 \
+            --memory 512Mi \
+            --timeout 300 \
+            --min-instances 0 \
+            --max-instances 2 \
+            --port 8080 \
+            --quiet
 
       - name: Get Cloud Run URL
         id: get-url
