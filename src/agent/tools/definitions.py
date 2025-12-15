@@ -26,43 +26,53 @@ def bq_query_tool(sql: str, params: Optional[Dict[str, Any]] = None) -> str:
 @tool
 def search_logs_tool(query: str, severity: Optional[str] = None, hours: int = 1, limit: int = 20) -> str:
     """
-    Searches logs in the linked log analytics dataset.
+    Searches logs in the central logging dataset.
+    Args:
+        query: Search term to find in log messages (searches display_message and json_payload_str)
+        severity: Optional severity filter (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        hours: Number of hours to look back (default: 1)
+        limit: Maximum number of logs to return (default: 20)
     """
-    # Re-import config here to try and get the latest version
-    import importlib
-    import src.config
-    importlib.reload(src.config)
     from src.config import config
 
-    # Construct SQL dynamically
-    dataset_fqn = config.log_analytics_linked_dataset_fqn()
-    table = f"{dataset_fqn}._AllLogs"  # Standard Log Analytics linked dataset table
-    
-    # Linked datasets usually have `timestamp`, `textPayload`, `jsonPayload`, `severity` etc.
-    # We might need to adjust column names based on the actual schema of the linked dataset.
-    # For now, I'll use standard columns.
-    
+    # Use the canonical view that unions all log tables
+    project_id = config.PROJECT_ID_LOGS
+    dataset_id = "central_logging_v1"
+    view = f"{project_id}.{dataset_id}.view_canonical_logs"
+
     start_time = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
-    
+    end_time = datetime.utcnow().isoformat()
+
     sql = f"""
-    SELECT timestamp, severity, log_name, text_payload, json_payload
-    FROM `{table}`
-    WHERE timestamp > TIMESTAMP(@start_time)
+    SELECT
+        event_ts,
+        severity,
+        service,
+        source_table,
+        display_message,
+        json_payload_str,
+        trace,
+        spanId
+    FROM `{view}`
+    WHERE event_ts BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
     """
-    
-    params = {"start_time": start_time}
-    
+
+    params = {
+        "start_time": start_time,
+        "end_time": end_time
+    }
+
     if severity:
         sql += " AND severity = @severity"
         params["severity"] = severity
-        
+
     if query:
-        # Search in text_payload or json_payload
-        sql += " AND (SEARCH(text_payload, @query) OR SEARCH(json_payload, @query))"
-        params["query"] = query
-        
-    sql += " ORDER BY timestamp DESC LIMIT @limit"
-    
+        # Search in display_message and json_payload_str
+        sql += " AND (LOWER(display_message) LIKE LOWER(@query_pattern) OR LOWER(json_payload_str) LIKE LOWER(@query_pattern))"
+        params["query_pattern"] = f"%{query}%"
+
+    sql += f" ORDER BY event_ts DESC LIMIT {limit}"
+
     try:
         res = run_bq_query(BQQueryInput(sql=sql, params=params, max_rows=limit))
         return json.dumps(res.rows, default=str)
