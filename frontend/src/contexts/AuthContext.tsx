@@ -10,6 +10,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react"
 import type { User } from "firebase/auth"
+import type { RecaptchaVerifier, ApplicationVerifier } from "firebase/auth"
 import {
   subscribeToAuthState,
   signInWithGoogle,
@@ -21,6 +22,10 @@ import {
   logout as firebaseLogout,
   getIdToken,
   getAuthErrorMessage,
+  setupRecaptchaVerifier,
+  sendVerificationCode,
+  verifyPhoneCode,
+  clearPhoneVerification,
 } from "@/lib/auth"
 
 interface AuthContextType {
@@ -28,6 +33,7 @@ interface AuthContextType {
   user: User | null
   loading: boolean
   error: string | null
+  phoneVerificationPending: boolean
 
   // Sign-in methods
   signInWithGoogle: () => Promise<void>
@@ -37,6 +43,12 @@ interface AuthContextType {
   signUpWithEmail: (email: string, password: string) => Promise<void>
   signInAsGuest: () => Promise<void>
   logout: () => Promise<void>
+
+  // Phone authentication
+  setupPhoneRecaptcha: (containerId: string, invisible?: boolean) => RecaptchaVerifier
+  sendPhoneVerification: (phoneNumber: string, appVerifier: ApplicationVerifier) => Promise<void>
+  verifyPhoneCode: (code: string) => Promise<void>
+  cancelPhoneVerification: () => void
 
   // Utilities
   getIdToken: (forceRefresh?: boolean) => Promise<string | null>
@@ -53,6 +65,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [phoneVerificationPending, setPhoneVerificationPending] = useState(false)
 
   // Subscribe to auth state changes
   useEffect(() => {
@@ -146,12 +159,52 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+  // Phone authentication handlers
+  const handleSetupPhoneRecaptcha = (containerId: string, invisible = true): RecaptchaVerifier => {
+    return setupRecaptchaVerifier(containerId, invisible)
+  }
+
+  const handleSendPhoneVerification = async (phoneNumber: string, appVerifier: ApplicationVerifier) => {
+    try {
+      setError(null)
+      setLoading(true)
+      await sendVerificationCode(phoneNumber, appVerifier)
+      setPhoneVerificationPending(true)
+    } catch (e) {
+      setError(getAuthErrorMessage(e))
+      throw e
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleVerifyPhoneCode = async (code: string) => {
+    try {
+      setError(null)
+      setLoading(true)
+      await verifyPhoneCode(code)
+      setPhoneVerificationPending(false)
+    } catch (e) {
+      setError(getAuthErrorMessage(e))
+      throw e
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCancelPhoneVerification = () => {
+    clearPhoneVerification()
+    setPhoneVerificationPending(false)
+    setError(null)
+  }
+
   const clearError = () => setError(null)
 
   const value: AuthContextType = {
     user,
     loading,
     error,
+    phoneVerificationPending,
     signInWithGoogle: handleSignInWithGoogle,
     signInWithGitHub: handleSignInWithGitHub,
     signInWithMicrosoft: handleSignInWithMicrosoft,
@@ -159,6 +212,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signUpWithEmail: handleSignUpWithEmail,
     signInAsGuest: handleSignInAsGuest,
     logout: handleLogout,
+    setupPhoneRecaptcha: handleSetupPhoneRecaptcha,
+    sendPhoneVerification: handleSendPhoneVerification,
+    verifyPhoneCode: handleVerifyPhoneCode,
+    cancelPhoneVerification: handleCancelPhoneVerification,
     getIdToken,
     clearError,
   }
