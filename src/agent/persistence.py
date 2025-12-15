@@ -1,5 +1,5 @@
 from google.cloud import bigquery
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from src.config import config
 from typing import Dict, Any, List, Optional
@@ -37,7 +37,7 @@ def persist_agent_run(
     
     row = {
         "run_id": run_id,
-        "ts": datetime.utcnow().isoformat(),
+        "ts": datetime.now(timezone.utc).isoformat(),
         "user_query": user_query,
         "scope": json.dumps(scope),
         "graph_state": json.dumps(graph_state),
