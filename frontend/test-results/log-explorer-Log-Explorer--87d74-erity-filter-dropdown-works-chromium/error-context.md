@@ -1,0 +1,902 @@
+# Page snapshot
+
+```yaml
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - list:
+                - listitem:
+                  - link:
+                    - /url: /
+                    - generic:
+                      - img
+                    - generic:
+                      - generic: Glass Pane
+                      - generic: GCP Infrastructure Portal
+            - generic:
+              - generic:
+                - generic: Navigation
+                - generic:
+                  - list:
+                    - listitem:
+                      - link:
+                        - /url: /
+                        - img
+                        - generic: Dashboard
+                    - listitem:
+                      - link:
+                        - /url: /logs
+                        - img
+                        - generic: Log Explorer
+              - generic:
+                - generic: GCP Services
+                - generic:
+                  - list:
+                    - generic:
+                      - listitem:
+                        - button [expanded]:
+                          - img
+                          - generic: Services
+                          - img
+                        - generic:
+                          - list:
+                            - listitem:
+                              - link:
+                                - /url: /services/cloud-run
+                                - img
+                                - generic: Cloud Run
+                            - listitem:
+                              - link:
+                                - /url: /services/functions
+                                - img
+                                - generic: Functions
+                            - listitem:
+                              - link:
+                                - /url: /services/gke
+                                - img
+                                - generic: GKE
+                            - listitem:
+                              - link:
+                                - /url: /services/compute
+                                - img
+                                - generic: Compute Engine
+                            - listitem:
+                              - link:
+                                - /url: /services/storage
+                                - img
+                                - generic: Cloud Storage
+                            - listitem:
+                              - link:
+                                - /url: /services/bigquery
+                                - img
+                                - generic: BigQuery
+                            - listitem:
+                              - link:
+                                - /url: /services/pubsub
+                                - img
+                                - generic: Pub/Sub
+              - generic:
+                - generic: Tools
+                - generic:
+                  - list:
+                    - listitem:
+                      - link:
+                        - /url: /costs
+                        - img
+                        - generic: Cost Analytics
+                    - listitem:
+                      - link:
+                        - /url: /chat
+                        - img
+                        - generic: AI Debugger
+            - generic:
+              - list:
+                - listitem:
+                  - link:
+                    - /url: /settings
+                    - img
+                    - generic: Settings
+      - main:
+        - generic:
+          - button:
+            - img
+            - generic: Toggle Sidebar
+        - main:
+          - generic:
+            - generic:
+              - generic:
+                - heading [level=1]: Log Explorer
+                - paragraph: Search and analyze logs across all GCP services
+              - generic: Showing 100 logs from last 24h
+            - generic:
+              - generic:
+                - generic:
+                  - generic: ERROR
+                  - generic: "158"
+              - generic:
+                - generic:
+                  - generic: WARNING
+                  - generic: "68"
+              - generic:
+                - generic:
+                  - generic: INFO
+                  - generic: "25429"
+              - generic:
+                - generic:
+                  - generic: DEBUG
+                  - generic: "0"
+              - generic:
+                - generic:
+                  - generic: Total
+                  - generic: "26225"
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - textbox:
+                      - /placeholder: Search logs...
+                  - combobox [expanded]:
+                    - generic: All Severities
+                    - img
+                  - combobox:
+                    - generic: All Services
+                    - img
+                  - combobox:
+                    - generic: Last 24h
+                    - img
+                  - generic:
+                    - button:
+                      - img
+                    - button:
+                      - img
+                    - button:
+                      - img
+                      - text: Stream
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - table:
+                        - rowgroup:
+                          - row:
+                            - columnheader: Timestamp
+                            - columnheader: Severity
+                            - columnheader: Service
+                            - columnheader: Source
+                            - columnheader: Message
+                        - rowgroup:
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.jobcompleted
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.insert
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.jobcompleted
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: glass-pane
+                            - cell: run_googleapis
+                            - cell: GET https://glass-pane-845772051724.us-central1.run.app/api/sessions?user_id=anonymous&status=active&limit=50
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:16 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.jobcompleted
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.getqueryresults
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.getqueryresults
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.getqueryresults
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.getqueryresults
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.insert
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.getqueryresults
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.insert
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.jobcompleted
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.getqueryresults
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.getqueryresults
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.jobcompleted
+                          - row:
+                            - cell: 12/15/2025, 2:52:15 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: glass-pane
+                            - cell: run_googleapis
+                            - cell: GET https://glass-pane-845772051724.us-central1.run.app/api/stats/severity?hours=24
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: glass-pane
+                            - cell: run_googleapis
+                            - cell: GET https://glass-pane-845772051724.us-central1.run.app/api/stats/severity?hours=24
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: glass-pane
+                            - cell: run_googleapis
+                            - cell: GET https://glass-pane-845772051724.us-central1.run.app/api/stats/services?hours=24
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: glass-pane
+                            - cell: run_googleapis
+                            - cell: GET https://glass-pane-845772051724.us-central1.run.app/api/stats/severity?hours=24
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: glass-pane
+                            - cell: run_googleapis
+                            - cell: GET https://glass-pane-845772051724.us-central1.run.app/api/stats/services?hours=24
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.getqueryresults
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.getqueryresults
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.getqueryresults
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.insert
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.getqueryresults
+                          - row:
+                            - cell: 12/15/2025, 2:52:14 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.getqueryresults
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.insert
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: google.cloud.bigquery.v2.JobService.InsertJob
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: bigquery.googleapis.com
+                            - cell: cloudaudit_googleapis
+                            - cell: jobservice.jobcompleted
+                          - row:
+                            - cell: 12/15/2025, 2:52:13 AM
+                            - cell:
+                              - generic: INFO
+                            - cell: glass-pane
+                            - cell: run_googleapis
+                            - cell: GET https://glass-pane-845772051724.us-central1.run.app/api/stats/severity?hours=24
+      - region "Notifications alt+T"
+      - button [ref=e1] [cursor=pointer]:
+        - generic [ref=e2]:
+          - img [ref=e4]
+          - img [ref=e39]
+        - generic [ref=e73]: "-"
+        - generic [ref=e74]: TanStack Router
+  - listbox [ref=e75]:
+    - option "All Severities" [active] [selected] [ref=e76]:
+      - generic [ref=e78]:
+        - img
+      - generic [ref=e79]: All Severities
+    - option "DEBUG" [ref=e80]:
+      - generic [ref=e82]: DEBUG
+    - option "INFO" [ref=e83]:
+      - generic [ref=e85]: INFO
+    - option "NOTICE" [ref=e86]:
+      - generic [ref=e88]: NOTICE
+    - option "WARNING" [ref=e89]:
+      - generic [ref=e91]: WARNING
+    - option "ERROR" [ref=e92]:
+      - generic [ref=e94]: ERROR
+    - option "CRITICAL" [ref=e95]:
+      - generic [ref=e97]: CRITICAL
+    - option "ALERT" [ref=e98]:
+      - generic [ref=e100]: ALERT
+    - option "EMERGENCY" [ref=e101]:
+      - generic [ref=e103]: EMERGENCY
+```

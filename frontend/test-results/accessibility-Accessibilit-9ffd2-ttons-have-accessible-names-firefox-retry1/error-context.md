@@ -1,0 +1,227 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e6]:
+    - list [ref=e8]:
+      - listitem [ref=e9]:
+        - link "Glass Pane GCP Infrastructure Portal" [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e12]
+          - generic [ref=e17]:
+            - generic [ref=e18]: Glass Pane
+            - generic [ref=e19]: GCP Infrastructure Portal
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: Navigation
+        - list [ref=e24]:
+          - listitem [ref=e25]:
+            - link "Dashboard" [ref=e26] [cursor=pointer]:
+              - /url: /
+              - img [ref=e27]
+              - generic [ref=e32]: Dashboard
+          - listitem [ref=e33]:
+            - link "Log Explorer" [ref=e34] [cursor=pointer]:
+              - /url: /logs
+              - img [ref=e35]
+              - generic [ref=e40]: Log Explorer
+      - generic [ref=e41]:
+        - generic [ref=e42]: GCP Services
+        - list [ref=e44]:
+          - listitem [ref=e46]:
+            - button "Services" [expanded] [ref=e47]:
+              - img [ref=e48]
+              - generic [ref=e53]: Services
+              - img [ref=e54]
+            - list [ref=e57]:
+              - listitem [ref=e58]:
+                - link "Cloud Run" [ref=e59] [cursor=pointer]:
+                  - /url: /services/cloud-run
+                  - img [ref=e60]
+                  - generic [ref=e62]: Cloud Run
+              - listitem [ref=e63]:
+                - link "Functions" [ref=e64] [cursor=pointer]:
+                  - /url: /services/functions
+                  - img [ref=e65]
+                  - generic [ref=e67]: Functions
+              - listitem [ref=e68]:
+                - link "GKE" [ref=e69] [cursor=pointer]:
+                  - /url: /services/gke
+                  - img [ref=e70]
+                  - generic [ref=e74]: GKE
+              - listitem [ref=e75]:
+                - link "Compute Engine" [ref=e76] [cursor=pointer]:
+                  - /url: /services/compute
+                  - img [ref=e77]
+                  - generic [ref=e82]: Compute Engine
+              - listitem [ref=e83]:
+                - link "Cloud Storage" [ref=e84] [cursor=pointer]:
+                  - /url: /services/storage
+                  - img [ref=e85]
+                  - generic [ref=e90]: Cloud Storage
+              - listitem [ref=e91]:
+                - link "BigQuery" [ref=e92] [cursor=pointer]:
+                  - /url: /services/bigquery
+                  - img [ref=e93]
+                  - generic [ref=e97]: BigQuery
+              - listitem [ref=e98]:
+                - link "Pub/Sub" [ref=e99] [cursor=pointer]:
+                  - /url: /services/pubsub
+                  - img [ref=e100]
+                  - generic [ref=e102]: Pub/Sub
+      - generic [ref=e103]:
+        - generic [ref=e104]: Tools
+        - list [ref=e106]:
+          - listitem [ref=e107]:
+            - link "Cost Analytics" [ref=e108] [cursor=pointer]:
+              - /url: /costs
+              - img [ref=e109]
+              - generic [ref=e112]: Cost Analytics
+          - listitem [ref=e113]:
+            - link "AI Debugger" [ref=e114] [cursor=pointer]:
+              - /url: /chat
+              - img [ref=e115]
+              - generic [ref=e117]: AI Debugger
+    - list [ref=e119]:
+      - listitem [ref=e120]:
+        - link "Settings" [ref=e121] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e122]
+          - generic [ref=e125]: Settings
+  - main [ref=e126]:
+    - button "Toggle Sidebar" [ref=e128]:
+      - img
+      - generic [ref=e129]: Toggle Sidebar
+    - main [ref=e130]:
+      - generic [ref=e131]:
+        - generic [ref=e132]:
+          - generic [ref=e133]:
+            - heading "Dashboard" [level=1] [ref=e134]
+            - paragraph [ref=e135]: GCP Infrastructure Portal - Real-time Overview
+          - generic [ref=e136]:
+            - button "Refresh" [ref=e137]:
+              - img
+              - text: Refresh
+            - button "AI Assistant" [ref=e138]:
+              - img
+              - text: AI Assistant
+        - generic [ref=e139]:
+          - generic [ref=e140]:
+            - generic [ref=e141]:
+              - generic [ref=e142]: Total Logs (24h)
+              - img [ref=e143]
+            - generic [ref=e145]:
+              - generic [ref=e146]: 30,495
+              - paragraph [ref=e147]: Across all services
+          - generic [ref=e148]:
+            - generic [ref=e149]:
+              - generic [ref=e150]: Errors (24h)
+              - img [ref=e151]
+            - generic [ref=e155]:
+              - generic [ref=e156]: "160"
+              - link "View all errors →" [ref=e157] [cursor=pointer]:
+                - /url: /logs?severity=ERROR
+                - paragraph [ref=e158]: View all errors →
+          - generic [ref=e159]:
+            - generic [ref=e160]:
+              - generic [ref=e161]: Warnings (24h)
+              - img [ref=e162]
+            - generic [ref=e166]:
+              - generic [ref=e167]: "68"
+              - link "View warnings →" [ref=e168] [cursor=pointer]:
+                - /url: /logs?severity=WARNING
+                - paragraph [ref=e169]: View warnings →
+          - generic [ref=e170]:
+            - generic [ref=e171]:
+              - generic [ref=e172]: Active Services
+              - img [ref=e173]
+            - generic [ref=e178]:
+              - generic [ref=e179]: "16"
+              - paragraph [ref=e180]: Logging in last 24h
+        - generic [ref=e181]:
+          - generic [ref=e182]:
+            - generic [ref=e183]:
+              - generic [ref=e184]: Severity Distribution
+              - generic [ref=e185]: Log counts by severity level (24h)
+            - generic [ref=e187]:
+              - generic [ref=e189]:
+                - generic [ref=e190]: ERROR
+                - generic [ref=e191]: "158"
+              - generic [ref=e195]:
+                - generic [ref=e196]: WARNING
+                - generic [ref=e197]: "68"
+              - generic [ref=e201]:
+                - generic [ref=e202]: INFO
+                - generic [ref=e203]: 29,699
+              - generic [ref=e207]:
+                - generic [ref=e208]: DEBUG
+                - generic [ref=e209]: "0"
+              - generic [ref=e212]:
+                - generic [ref=e213]: CRITICAL
+                - generic [ref=e214]: "2"
+          - generic [ref=e217]:
+            - generic [ref=e218]:
+              - generic [ref=e219]: Top Services by Logs
+              - generic [ref=e220]: Services with most log entries (24h)
+            - generic [ref=e222]:
+              - generic [ref=e223]:
+                - generic [ref=e226]: cloudbuild
+                - generic [ref=e228]: 14,499
+              - generic [ref=e229]:
+                - generic [ref=e232]: bigquery.googleapis.com
+                - generic [ref=e233]:
+                  - generic [ref=e234]: 14,105
+                  - generic [ref=e235]: 44 errors
+              - generic [ref=e236]:
+                - generic [ref=e239]: glass-pane
+                - generic [ref=e240]:
+                  - generic [ref=e241]: "895"
+                  - generic [ref=e242]: 71 errors
+              - generic [ref=e243]:
+                - generic [ref=e246]: audit
+                - generic [ref=e247]:
+                  - generic [ref=e248]: "471"
+                  - generic [ref=e249]: 26 errors
+              - generic [ref=e250]:
+                - generic [ref=e253]: log-processor
+                - generic [ref=e255]: "190"
+              - generic [ref=e256]:
+                - generic [ref=e259]: run.googleapis.com
+                - generic [ref=e260]:
+                  - generic [ref=e261]: "176"
+                  - generic [ref=e262]: 9 errors
+        - generic [ref=e263]:
+          - generic [ref=e264]:
+            - generic [ref=e265]: Quick Actions
+            - generic [ref=e266]: Common tasks and shortcuts
+          - generic [ref=e268]:
+            - link "Search Logs" [ref=e269] [cursor=pointer]:
+              - /url: /logs
+              - button "Search Logs" [ref=e270]:
+                - img
+                - text: Search Logs
+            - link "View Errors" [ref=e271] [cursor=pointer]:
+              - /url: /logs?severity=ERROR
+              - button "View Errors" [ref=e272]:
+                - img
+                - text: View Errors
+            - link "AI Debugger" [ref=e273] [cursor=pointer]:
+              - /url: /chat
+              - button "AI Debugger" [ref=e274]:
+                - img
+                - text: AI Debugger
+            - link "Cost Analytics" [ref=e275] [cursor=pointer]:
+              - /url: /costs
+              - button "Cost Analytics" [ref=e276]:
+                - img
+                - text: Cost Analytics
+  - region "Notifications alt+T"
+  - generic:
+    - contentinfo:
+      - button "Open TanStack Router Devtools" [ref=e277] [cursor=pointer]:
+        - generic [ref=e278]:
+          - img [ref=e280]
+          - img [ref=e316]
+        - generic [ref=e351]: "-"
+        - generic [ref=e352]: TanStack Router
+```

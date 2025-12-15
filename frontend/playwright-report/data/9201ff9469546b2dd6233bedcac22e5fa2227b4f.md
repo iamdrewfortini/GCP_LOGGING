@@ -1,0 +1,350 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e6]:
+    - list [ref=e8]:
+      - listitem [ref=e9]:
+        - link "Glass Pane GCP Infrastructure Portal" [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e12]
+          - generic [ref=e17]:
+            - generic [ref=e18]: Glass Pane
+            - generic [ref=e19]: GCP Infrastructure Portal
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: Navigation
+        - list [ref=e24]:
+          - listitem [ref=e25]:
+            - link "Dashboard" [ref=e26] [cursor=pointer]:
+              - /url: /
+              - img [ref=e27]
+              - generic [ref=e32]: Dashboard
+          - listitem [ref=e33]:
+            - link "Log Explorer" [ref=e34] [cursor=pointer]:
+              - /url: /logs
+              - img [ref=e35]
+              - generic [ref=e40]: Log Explorer
+      - generic [ref=e41]:
+        - generic [ref=e42]: GCP Services
+        - list [ref=e44]:
+          - listitem [ref=e46]:
+            - button "Services" [expanded] [ref=e47]:
+              - img [ref=e48]
+              - generic [ref=e53]: Services
+              - img [ref=e54]
+            - list [ref=e57]:
+              - listitem [ref=e58]:
+                - link "Cloud Run" [ref=e59] [cursor=pointer]:
+                  - /url: /services/cloud-run
+                  - img [ref=e60]
+                  - generic [ref=e62]: Cloud Run
+              - listitem [ref=e63]:
+                - link "Functions" [ref=e64] [cursor=pointer]:
+                  - /url: /services/functions
+                  - img [ref=e65]
+                  - generic [ref=e67]: Functions
+              - listitem [ref=e68]:
+                - link "GKE" [ref=e69] [cursor=pointer]:
+                  - /url: /services/gke
+                  - img [ref=e70]
+                  - generic [ref=e74]: GKE
+              - listitem [ref=e75]:
+                - link "Compute Engine" [ref=e76] [cursor=pointer]:
+                  - /url: /services/compute
+                  - img [ref=e77]
+                  - generic [ref=e82]: Compute Engine
+              - listitem [ref=e83]:
+                - link "Cloud Storage" [ref=e84] [cursor=pointer]:
+                  - /url: /services/storage
+                  - img [ref=e85]
+                  - generic [ref=e90]: Cloud Storage
+              - listitem [ref=e91]:
+                - link "BigQuery" [ref=e92] [cursor=pointer]:
+                  - /url: /services/bigquery
+                  - img [ref=e93]
+                  - generic [ref=e97]: BigQuery
+              - listitem [ref=e98]:
+                - link "Pub/Sub" [ref=e99] [cursor=pointer]:
+                  - /url: /services/pubsub
+                  - img [ref=e100]
+                  - generic [ref=e102]: Pub/Sub
+      - generic [ref=e103]:
+        - generic [ref=e104]: Tools
+        - list [ref=e106]:
+          - listitem [ref=e107]:
+            - link "Cost Analytics" [ref=e108] [cursor=pointer]:
+              - /url: /costs
+              - img [ref=e109]
+              - generic [ref=e112]: Cost Analytics
+          - listitem [ref=e113]:
+            - link "AI Debugger" [ref=e114] [cursor=pointer]:
+              - /url: /chat
+              - img [ref=e115]
+              - generic [ref=e117]: AI Debugger
+    - list [ref=e119]:
+      - listitem [ref=e120]:
+        - link "Settings" [ref=e121] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e122]
+          - generic [ref=e125]: Settings
+  - main [ref=e126]:
+    - button "Toggle Sidebar" [ref=e128]:
+      - img
+      - generic [ref=e129]: Toggle Sidebar
+    - main [ref=e130]:
+      - generic [ref=e131]:
+        - generic [ref=e132]:
+          - generic [ref=e134]:
+            - generic [ref=e135]: Sessions
+            - button [ref=e136]:
+              - img
+          - generic [ref=e141]:
+            - button "Hello test message 12/15/2025" [ref=e142]:
+              - generic [ref=e143]:
+                - generic [ref=e144]: Hello test message
+                - generic [ref=e145]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e146]:
+              - generic [ref=e147]:
+                - generic [ref=e148]: Show me all errors from the last hour
+                - generic [ref=e149]: 12/15/2025
+            - button "Test alignment 12/15/2025" [ref=e150]:
+              - generic [ref=e151]:
+                - generic [ref=e152]: Test alignment
+                - generic [ref=e153]: 12/15/2025
+            - button "Test timestamp 12/15/2025" [ref=e154]:
+              - generic [ref=e155]:
+                - generic [ref=e156]: Test timestamp
+                - generic [ref=e157]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e158]:
+              - generic [ref=e159]:
+                - generic [ref=e160]: Show me all errors from the last hour
+                - generic [ref=e161]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e162]:
+              - generic [ref=e163]:
+                - generic [ref=e164]: Show me all errors from the last hour
+                - generic [ref=e165]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e166]:
+              - generic [ref=e167]:
+                - generic [ref=e168]: Show me all errors from the last hour
+                - generic [ref=e169]: 12/15/2025
+            - button "Test enter key 12/15/2025" [ref=e170]:
+              - generic [ref=e171]:
+                - generic [ref=e172]: Test enter key
+                - generic [ref=e173]: 12/15/2025
+            - button "Test message 12/15/2025" [ref=e174]:
+              - generic [ref=e175]:
+                - generic [ref=e176]: Test message
+                - generic [ref=e177]: 12/15/2025
+            - button "Test message 12/15/2025" [ref=e178]:
+              - generic [ref=e179]:
+                - generic [ref=e180]: Test message
+                - generic [ref=e181]: 12/15/2025
+            - button "Test message 12/15/2025" [ref=e182]:
+              - generic [ref=e183]:
+                - generic [ref=e184]: Test message
+                - generic [ref=e185]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e186]:
+              - generic [ref=e187]:
+                - generic [ref=e188]: Show me all errors from the last hour
+                - generic [ref=e189]: 12/15/2025
+            - button "test 12/15/2025" [ref=e190]:
+              - generic [ref=e191]:
+                - generic [ref=e192]: test
+                - generic [ref=e193]: 12/15/2025
+            - button "Test enter key 12/15/2025" [ref=e194]:
+              - generic [ref=e195]:
+                - generic [ref=e196]: Test enter key
+                - generic [ref=e197]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e198]:
+              - generic [ref=e199]:
+                - generic [ref=e200]: Show me all errors from the last hour
+                - generic [ref=e201]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e202]:
+              - generic [ref=e203]:
+                - generic [ref=e204]: Show me all errors from the last hour
+                - generic [ref=e205]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e206]:
+              - generic [ref=e207]:
+                - generic [ref=e208]: Show me all errors from the last hour
+                - generic [ref=e209]: 12/15/2025
+            - button "Hello test message 12/15/2025" [ref=e210]:
+              - generic [ref=e211]:
+                - generic [ref=e212]: Hello test message
+                - generic [ref=e213]: 12/15/2025
+            - button "Which services have the most errors? 12/15/2025" [ref=e214]:
+              - generic [ref=e215]:
+                - generic [ref=e216]: Which services have the most errors?
+                - generic [ref=e217]: 12/15/2025
+            - button "Analyze warning patterns from the last 24 hours 12/15/2025" [ref=e218]:
+              - generic [ref=e219]:
+                - generic [ref=e220]: Analyze warning patterns from the last 24 hours
+                - generic [ref=e221]: 12/15/2025
+            - button "Give me a health summary of all logs 12/15/2025" [ref=e222]:
+              - generic [ref=e223]:
+                - generic [ref=e224]: Give me a health summary of all logs
+                - generic [ref=e225]: 12/15/2025
+            - button "Test message 12/15/2025" [ref=e226]:
+              - generic [ref=e227]:
+                - generic [ref=e228]: Test message
+                - generic [ref=e229]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e230]:
+              - generic [ref=e231]:
+                - generic [ref=e232]: Show me all errors from the last hour
+                - generic [ref=e233]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e234]:
+              - generic [ref=e235]:
+                - generic [ref=e236]: Show me all errors from the last hour
+                - generic [ref=e237]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e238]:
+              - generic [ref=e239]:
+                - generic [ref=e240]: Show me all errors from the last hour
+                - generic [ref=e241]: 12/15/2025
+            - button "Hello test message 12/15/2025" [ref=e242]:
+              - generic [ref=e243]:
+                - generic [ref=e244]: Hello test message
+                - generic [ref=e245]: 12/15/2025
+            - button "test 12/15/2025" [ref=e246]:
+              - generic [ref=e247]:
+                - generic [ref=e248]: test
+                - generic [ref=e249]: 12/15/2025
+            - button "<script>alert(\"xss\")</script> 12/15/2025" [ref=e250]:
+              - generic [ref=e251]:
+                - generic [ref=e252]: <script>alert("xss")</script>
+                - generic [ref=e253]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e254]:
+              - generic [ref=e255]:
+                - generic [ref=e256]: Show me all errors from the last hour
+                - generic [ref=e257]: 12/15/2025
+            - button "test message 12/15/2025" [ref=e258]:
+              - generic [ref=e259]:
+                - generic [ref=e260]: test message
+                - generic [ref=e261]: 12/15/2025
+            - button "test message 12/15/2025" [ref=e262]:
+              - generic [ref=e263]:
+                - generic [ref=e264]: test message
+                - generic [ref=e265]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e266]:
+              - generic [ref=e267]:
+                - generic [ref=e268]: Show me all errors from the last hour
+                - generic [ref=e269]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e270]:
+              - generic [ref=e271]:
+                - generic [ref=e272]: Show me all errors from the last hour
+                - generic [ref=e273]: 12/15/2025
+            - button "Give me a health summary of all logs 12/15/2025" [ref=e274]:
+              - generic [ref=e275]:
+                - generic [ref=e276]: Give me a health summary of all logs
+                - generic [ref=e277]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e278]:
+              - generic [ref=e279]:
+                - generic [ref=e280]: Show me all errors from the last hour
+                - generic [ref=e281]: 12/15/2025
+            - button "Test alignment 12/15/2025" [ref=e282]:
+              - generic [ref=e283]:
+                - generic [ref=e284]: Test alignment
+                - generic [ref=e285]: 12/15/2025
+            - button "Test timestamp 12/15/2025" [ref=e286]:
+              - generic [ref=e287]:
+                - generic [ref=e288]: Test timestamp
+                - generic [ref=e289]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e290]:
+              - generic [ref=e291]:
+                - generic [ref=e292]: Show me all errors from the last hour
+                - generic [ref=e293]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e294]:
+              - generic [ref=e295]:
+                - generic [ref=e296]: Show me all errors from the last hour
+                - generic [ref=e297]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e298]:
+              - generic [ref=e299]:
+                - generic [ref=e300]: Show me all errors from the last hour
+                - generic [ref=e301]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e302]:
+              - generic [ref=e303]:
+                - generic [ref=e304]: Show me all errors from the last hour
+                - generic [ref=e305]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e306]:
+              - generic [ref=e307]:
+                - generic [ref=e308]: Show me all errors from the last hour
+                - generic [ref=e309]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e310]:
+              - generic [ref=e311]:
+                - generic [ref=e312]: Show me all errors from the last hour
+                - generic [ref=e313]: 12/15/2025
+            - button "Which services have the most errors? 12/15/2025" [ref=e314]:
+              - generic [ref=e315]:
+                - generic [ref=e316]: Which services have the most errors?
+                - generic [ref=e317]: 12/15/2025
+            - button "test 12/15/2025" [ref=e318]:
+              - generic [ref=e319]:
+                - generic [ref=e320]: test
+                - generic [ref=e321]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e322]:
+              - generic [ref=e323]:
+                - generic [ref=e324]: Show me all errors from the last hour
+                - generic [ref=e325]: 12/15/2025
+            - button "Give me a health summary of all logs 12/15/2025" [ref=e326]:
+              - generic [ref=e327]:
+                - generic [ref=e328]: Give me a health summary of all logs
+                - generic [ref=e329]: 12/15/2025
+            - button "Analyze warning patterns from the last 24 hours 12/15/2025" [ref=e330]:
+              - generic [ref=e331]:
+                - generic [ref=e332]: Analyze warning patterns from the last 24 hours
+                - generic [ref=e333]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e334]:
+              - generic [ref=e335]:
+                - generic [ref=e336]: Show me all errors from the last hour
+                - generic [ref=e337]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e338]:
+              - generic [ref=e339]:
+                - generic [ref=e340]: Show me all errors from the last hour
+                - generic [ref=e341]: 12/15/2025
+        - generic [ref=e342]:
+          - generic [ref=e344]:
+            - generic [ref=e345]:
+              - img [ref=e347]
+              - generic [ref=e354]:
+                - generic [ref=e355]: AI Log Debugger
+                - paragraph [ref=e356]: Powered by Gemini - Intelligent log analysis
+            - generic [ref=e357]:
+              - button "Clear" [ref=e358]:
+                - img
+                - text: Clear
+              - button "New" [ref=e359]:
+                - img
+                - text: New
+          - generic [ref=e363]:
+            - generic [ref=e364]:
+              - img [ref=e366]
+              - generic [ref=e369]:
+                - generic [ref=e371]: Which services have the most errors?
+                - generic [ref=e372]: 2:52:46 AM
+            - generic [ref=e373]:
+              - img [ref=e375]
+              - generic [ref=e382]:
+                - generic [ref=e383]: Generating...
+                - generic [ref=e384]: 2:52:46 AM
+            - generic [ref=e385]:
+              - img [ref=e386]
+              - text: Analyzing logs...
+          - generic [ref=e388]:
+            - generic [ref=e389]:
+              - generic [ref=e390]:
+                - img [ref=e391]
+                - textbox "Ask about your logs, errors, traces..." [disabled]
+              - button [ref=e394]:
+                - img
+            - paragraph [ref=e395]:
+              - img [ref=e396]
+              - text: "Try: \"Show me errors from the last hour\" or \"Health summary\""
+  - region "Notifications alt+T"
+  - generic:
+    - contentinfo:
+      - button "Open TanStack Router Devtools" [ref=e401] [cursor=pointer]:
+        - generic [ref=e402]:
+          - img [ref=e404]
+          - img [ref=e440]
+        - generic [ref=e475]: "-"
+        - generic [ref=e476]: TanStack Router
+```

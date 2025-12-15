@@ -1,0 +1,292 @@
+{
+  "format": {
+    "name": "TOON",
+    "profile": "task-graph",
+    "spec": "v3.x working draft"
+  },
+  "header": {
+    "generated_at": "2025-12-15T00:00:00Z",
+    "repo_root": "/home/daclab-ai/GCP_LOGGING",
+    "branch": "main",
+    "head_sha": "0637d9acb9234b386a65fdab9cb1e215da777746",
+    "review_artifacts": {
+      "review_md": "docs/reviews/2025-12-15/review.md",
+      "patch_plan_md": "docs/reviews/2025-12-15/patch_plan.md"
+    }
+  },
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Add authN/authZ for user-scoped endpoints (sessions + saved queries)",
+      "severity": "BLOCKER",
+      "owner_role": "backend",
+      "status": "completed",
+      "files": [
+        "src/api/main.py",
+        "src/services/firebase_service.py",
+        "src/config.py"
+      ],
+      "depends_on": [],
+      "steps": [
+        "Decide auth strategy (recommended: Firebase Auth ID tokens). Document in docs/ (short note).",
+        "Add FastAPI dependency/middleware to verify Authorization: Bearer <id_token> and extract uid.",
+        "Stop trusting caller-supplied user_id in API requests; derive user_id from token claims.",
+        "Enforce ownership checks for session/message access (session.userId must match uid).",
+        "Update API contract docs and frontend integration notes accordingly."
+      ],
+      "acceptance_criteria": [
+        "Requests to /api/sessions and /api/saved-queries without a valid token return 401.",
+        "A user cannot read another user’s sessions/messages by guessing IDs (403 or 404).",
+        "Existing unit tests still pass and new auth tests pass."
+      ],
+      "verification": [
+        "source .venv/bin/activate && pytest -q",
+        "curl -i http://localhost:8080/api/sessions (expects 401)"
+      ]
+    },
+    {
+      "id": "TASK-002",
+      "title": "Stop leaking stack traces and raw tool I/O via SSE /api/chat",
+      "severity": "BLOCKER",
+      "owner_role": "backend",
+      "status": "completed",
+      "files": [
+        "src/api/main.py"
+      ],
+      "depends_on": [],
+      "steps": [
+        "Replace traceback-in-response with a safe error payload (include a request/correlation id only).",
+        "Add a debug flag (e.g., ENV=local) to optionally include limited diagnostics.",
+        "Redact/summarize tool inputs/outputs before streaming them to clients."
+      ],
+      "acceptance_criteria": [
+        "SSE error payload never contains a Python traceback in non-local env.",
+        "Tool outputs streamed to clients are redacted/summarized (no raw secrets/tokens)."
+      ],
+      "verification": [
+        "source .venv/bin/activate && pytest -q",
+        "Run uvicorn and trigger an error in /api/chat; confirm no traceback in SSE stream"
+      ]
+    },
+    {
+      "id": "TASK-003",
+      "title": "Implement and apply PII/secret redaction for logs, agent tools, and embeddings",
+      "severity": "HIGH",
+      "owner_role": "security",
+      "status": "completed",
+      "files": [
+        "src/agent/tools/definitions.py",
+        "src/agent/tools/contracts.py",
+        "functions/firebase/main.py",
+        "src/api/main.py"
+      ],
+      "depends_on": [],
+      "steps": [
+        "Create a shared redaction utility (regex + structured redaction for common tokens, emails, IPs).",
+        "Apply redaction to agent tool outputs before they are returned to the LLM and before SSE streaming.",
+        "Apply redaction/truncation to embedding_text prior to generating/storing embeddings.",
+        "Add unit tests with representative log fixtures to validate redaction behavior."
+      ],
+      "acceptance_criteria": [
+        "Given a fixture containing emails/IPs/bearer tokens, redaction removes or masks them consistently.",
+        "No tool output includes raw Authorization headers, API keys, or full IP addresses."
+      ],
+      "verification": [
+        "source .venv/bin/activate && pytest -q"
+      ]
+    },
+    {
+      "id": "TASK-004",
+      "title": "Add BigQuery cost guardrails to API queries (maximum_bytes_billed, bounded windows)",
+      "severity": "HIGH",
+      "owner_role": "backend",
+      "files": [
+        "src/api/main.py",
+        "src/glass_pane/query_builder.py",
+        "src/glass_pane/config.py"
+      ],
+      "depends_on": [],
+      "steps": [
+        "Introduce config for maximum_bytes_billed (reuse MAX_BQ_BYTES_ESTIMATE semantics).",
+        "Apply maximum_bytes_billed to QueryJobConfig in API endpoints.",
+        "Ensure hours/limit are clamped and validated consistently across endpoints.",
+        "Add tests around clamping and job config creation (mock bigquery client)."
+      ],
+      "acceptance_criteria": [
+        "API queries enforce maximum_bytes_billed and fail safely when exceeded.",
+        "hours and limit cannot exceed configured caps."
+      ],
+      "verification": [
+        "source .venv/bin/activate && pytest -q"
+      ]
+    },
+    {
+      "id": "TASK-005",
+      "title": "Fix mutable default arguments in agent persistence",
+      "severity": "HIGH",
+      "owner_role": "backend",
+      "status": "completed",
+      "files": [
+        "src/agent/persistence.py"
+      ],
+      "depends_on": [],
+      "steps": [
+        "Change defaults for dict/list params to None and initialize inside persist_agent_run().",
+        "Add a unit test confirming no cross-call mutation/data sharing."
+      ],
+      "acceptance_criteria": [
+        "persist_agent_run() has no mutable default args.",
+        "New unit test passes and reproduces the prior risk."
+      ],
+      "verification": [
+        "source .venv/bin/activate && pytest -q"
+      ]
+    },
+    {
+      "id": "TASK-006",
+      "title": "Make CORS policy configurable via env",
+      "severity": "MEDIUM",
+      "owner_role": "backend",
+      "status": "completed",
+      "files": [
+        "src/api/main.py"
+      ],
+      "depends_on": [],
+      "steps": [
+        "Add env var (e.g., ALLOWED_ORIGINS) and parse as a list.",
+        "Use safe defaults for local dev only.",
+        "Avoid allow_credentials unless required (prefer Authorization header auth)."
+      ],
+      "acceptance_criteria": [
+        "CORS origins can be configured without code changes.",
+        "Unknown origins are rejected."
+      ],
+      "verification": [
+        "Manual: call API from allowed origin and verify CORS headers",
+        "Manual: call API from disallowed origin and verify failure"
+      ]
+    },
+    {
+      "id": "TASK-007",
+      "title": "Introduce dependency lockfile for reproducible builds",
+      "severity": "HIGH",
+      "owner_role": "devops",
+      "files": [
+        "requirements.txt",
+        "Dockerfile",
+        ".github/workflows/deploy-production.yml"
+      ],
+      "depends_on": [],
+      "steps": [
+        "Adopt pip-tools/uv/poetry to generate a pinned lock (requirements.lock) with hashes.",
+        "Update Dockerfile to install from the lockfile.",
+        "Update CI to install from the lockfile and verify dependency integrity."
+      ],
+      "acceptance_criteria": [
+        "Clean build succeeds using only the lockfile.",
+        "CI and local dev use the same pinned versions."
+      ],
+      "verification": [
+        "docker build .",
+        "CI run passes"
+      ]
+    },
+    {
+      "id": "TASK-008",
+      "title": "Add linting + security scanning to CI (ruff, pip-audit/osv)",
+      "severity": "MEDIUM",
+      "owner_role": "devops",
+      "files": [
+        ".github/workflows/deploy-production.yml",
+        "pyproject.toml"
+      ],
+      "depends_on": [
+        "TASK-007"
+      ],
+      "steps": [
+        "Add ruff (lint+format) configuration (pyproject.toml).",
+        "Add CI steps to run ruff check/format and pip-audit (or osv-scanner).",
+        "Fail CI on findings (or start in warn-only mode with an explicit roadmap)."
+      ],
+      "acceptance_criteria": [
+        "CI runs lint + scan steps on every push.",
+        "Repo has a single documented way to run checks locally."
+      ],
+      "verification": [
+        "source .venv/bin/activate && ruff check .",
+        "source .venv/bin/activate && ruff format --check ."
+      ]
+    },
+    {
+      "id": "TASK-009",
+      "title": "Fix docs drift (go-live checklist, workflow names, API request shapes)",
+      "severity": "MEDIUM",
+      "owner_role": "docs",
+      "files": [
+        "GO_LIVE_CHECKLIST.md",
+        "CLAUDE.md",
+        "README.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "depends_on": [],
+      "steps": [
+        "Update curl examples to match ChatRequest schema (message, not query).",
+        "Update workflow references to deploy-production.yml.",
+        "Update README directory structure to reflect React frontend vs removed server templates.",
+        "Run through documented smoke tests locally to confirm accuracy."
+      ],
+      "acceptance_criteria": [
+        "All referenced workflow filenames exist.",
+        "All curl examples match current API schema."
+      ],
+      "verification": [
+        "Manual: run smoke-test commands from docs against local server"
+      ]
+    },
+    {
+      "id": "TASK-010",
+      "title": "Prevent accidental commits of local debug artifacts",
+      "severity": "LOW",
+      "owner_role": "backend",
+      "files": [
+        ".gitignore",
+        "frontend/.gitignore"
+      ],
+      "depends_on": [],
+      "steps": [
+        "Add ignores for database-debug.log, pubsub-debug.log (repo root).",
+        "If frontend is to be committed, ensure playwright-report/ and other generated outputs are ignored."
+      ],
+      "acceptance_criteria": [
+        "git status remains clean after running local debug flows that produce logs/reports."
+      ],
+      "verification": [
+        "git status --porcelain"
+      ]
+    },
+    {
+      "id": "TASK-011",
+      "title": "Fix and validate FinOps BigQuery job materialization script",
+      "severity": "MEDIUM",
+      "owner_role": "data",
+      "files": [
+        "src/finops/materialize_jobs.py",
+        "docs/RUNBOOK.md"
+      ],
+      "depends_on": [],
+      "steps": [
+        "Validate the INFORMATION_SCHEMA.JOBS schema for referenced_tables and adjust SQL accordingly.",
+        "Add a dry-run mode or a unit test that validates query compilation.",
+        "Document how to run this job safely and how to troubleshoot failures."
+      ],
+      "acceptance_criteria": [
+        "Script executes successfully in a sandbox and writes expected rows.",
+        "Runbook includes verification and rollback steps."
+      ],
+      "verification": [
+        "python -m src.finops.materialize_jobs (in sandbox)",
+        "Dry-run query succeeds"
+      ]
+    }
+  ]
+}

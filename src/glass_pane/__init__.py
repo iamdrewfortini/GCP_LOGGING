@@ -1,1 +1,1 @@
-"""Glass Pane UI + log query layer (templates + query builder)."""
+"""Glass Pane query layer for BigQuery log queries."""

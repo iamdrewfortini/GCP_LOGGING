@@ -1,0 +1,106 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e6]:
+    - list [ref=e8]:
+      - listitem [ref=e9]:
+        - link "Glass Pane GCP Infrastructure Portal" [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e12]
+          - generic [ref=e17]:
+            - generic [ref=e18]: Glass Pane
+            - generic [ref=e19]: GCP Infrastructure Portal
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: Navigation
+        - list [ref=e24]:
+          - listitem [ref=e25]:
+            - link "Dashboard" [ref=e26] [cursor=pointer]:
+              - /url: /
+              - img [ref=e27]
+              - generic [ref=e32]: Dashboard
+          - listitem [ref=e33]:
+            - link "Log Explorer" [ref=e34] [cursor=pointer]:
+              - /url: /logs
+              - img [ref=e35]
+              - generic [ref=e40]: Log Explorer
+      - generic [ref=e41]:
+        - generic [ref=e42]: GCP Services
+        - list [ref=e44]:
+          - listitem [ref=e46]:
+            - button "Services" [expanded] [ref=e47]:
+              - img [ref=e48]
+              - generic [ref=e53]: Services
+              - img [ref=e54]
+            - list [ref=e57]:
+              - listitem [ref=e58]:
+                - link "Cloud Run" [ref=e59] [cursor=pointer]:
+                  - /url: /services/cloud-run
+                  - img [ref=e60]
+                  - generic [ref=e62]: Cloud Run
+              - listitem [ref=e63]:
+                - link "Functions" [ref=e64] [cursor=pointer]:
+                  - /url: /services/functions
+                  - img [ref=e65]
+                  - generic [ref=e67]: Functions
+              - listitem [ref=e68]:
+                - link "GKE" [ref=e69] [cursor=pointer]:
+                  - /url: /services/gke
+                  - img [ref=e70]
+                  - generic [ref=e74]: GKE
+              - listitem [ref=e75]:
+                - link "Compute Engine" [ref=e76] [cursor=pointer]:
+                  - /url: /services/compute
+                  - img [ref=e77]
+                  - generic [ref=e82]: Compute Engine
+              - listitem [ref=e83]:
+                - link "Cloud Storage" [ref=e84] [cursor=pointer]:
+                  - /url: /services/storage
+                  - img [ref=e85]
+                  - generic [ref=e90]: Cloud Storage
+              - listitem [ref=e91]:
+                - link "BigQuery" [ref=e92] [cursor=pointer]:
+                  - /url: /services/bigquery
+                  - img [ref=e93]
+                  - generic [ref=e97]: BigQuery
+              - listitem [ref=e98]:
+                - link "Pub/Sub" [ref=e99] [cursor=pointer]:
+                  - /url: /services/pubsub
+                  - img [ref=e100]
+                  - generic [ref=e102]: Pub/Sub
+      - generic [ref=e103]:
+        - generic [ref=e104]: Tools
+        - list [ref=e106]:
+          - listitem [ref=e107]:
+            - link "Cost Analytics" [ref=e108] [cursor=pointer]:
+              - /url: /costs
+              - img [ref=e109]
+              - generic [ref=e112]: Cost Analytics
+          - listitem [ref=e113]:
+            - link "AI Debugger" [ref=e114] [cursor=pointer]:
+              - /url: /chat
+              - img [ref=e115]
+              - generic [ref=e117]: AI Debugger
+    - list [ref=e119]:
+      - listitem [ref=e120]:
+        - link "Settings" [ref=e121] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e122]
+          - generic [ref=e125]: Settings
+  - main [ref=e126]:
+    - button "Toggle Sidebar" [ref=e128]:
+      - img
+      - generic [ref=e129]: Toggle Sidebar
+    - main [ref=e130]:
+      - paragraph [ref=e131]: Not Found
+  - region "Notifications alt+T"
+  - generic:
+    - contentinfo:
+      - button "Open TanStack Router Devtools" [ref=e132] [cursor=pointer]:
+        - generic [ref=e133]:
+          - img [ref=e135]
+          - img [ref=e171]
+        - generic [ref=e206]: "-"
+        - generic [ref=e207]: TanStack Router
+```

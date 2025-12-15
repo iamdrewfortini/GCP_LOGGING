@@ -1,0 +1,214 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e6]:
+    - list [ref=e8]:
+      - listitem [ref=e9]:
+        - link "Glass Pane GCP Infrastructure Portal" [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e12]
+          - generic [ref=e17]:
+            - generic [ref=e18]: Glass Pane
+            - generic [ref=e19]: GCP Infrastructure Portal
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: Navigation
+        - list [ref=e24]:
+          - listitem [ref=e25]:
+            - link "Dashboard" [ref=e26] [cursor=pointer]:
+              - /url: /
+              - img [ref=e27]
+              - generic [ref=e32]: Dashboard
+          - listitem [ref=e33]:
+            - link "Log Explorer" [ref=e34] [cursor=pointer]:
+              - /url: /logs
+              - img [ref=e35]
+              - generic [ref=e40]: Log Explorer
+      - generic [ref=e41]:
+        - generic [ref=e42]: GCP Services
+        - list [ref=e44]:
+          - listitem [ref=e46]:
+            - button "Services" [expanded] [ref=e47]:
+              - img [ref=e48]
+              - generic [ref=e53]: Services
+              - img [ref=e54]
+            - list [ref=e57]:
+              - listitem [ref=e58]:
+                - link "Cloud Run" [ref=e59] [cursor=pointer]:
+                  - /url: /services/cloud-run
+                  - img [ref=e60]
+                  - generic [ref=e62]: Cloud Run
+              - listitem [ref=e63]:
+                - link "Functions" [ref=e64] [cursor=pointer]:
+                  - /url: /services/functions
+                  - img [ref=e65]
+                  - generic [ref=e67]: Functions
+              - listitem [ref=e68]:
+                - link "GKE" [ref=e69] [cursor=pointer]:
+                  - /url: /services/gke
+                  - img [ref=e70]
+                  - generic [ref=e74]: GKE
+              - listitem [ref=e75]:
+                - link "Compute Engine" [ref=e76] [cursor=pointer]:
+                  - /url: /services/compute
+                  - img [ref=e77]
+                  - generic [ref=e82]: Compute Engine
+              - listitem [ref=e83]:
+                - link "Cloud Storage" [ref=e84] [cursor=pointer]:
+                  - /url: /services/storage
+                  - img [ref=e85]
+                  - generic [ref=e90]: Cloud Storage
+              - listitem [ref=e91]:
+                - link "BigQuery" [ref=e92] [cursor=pointer]:
+                  - /url: /services/bigquery
+                  - img [ref=e93]
+                  - generic [ref=e97]: BigQuery
+              - listitem [ref=e98]:
+                - link "Pub/Sub" [ref=e99] [cursor=pointer]:
+                  - /url: /services/pubsub
+                  - img [ref=e100]
+                  - generic [ref=e102]: Pub/Sub
+      - generic [ref=e103]:
+        - generic [ref=e104]: Tools
+        - list [ref=e106]:
+          - listitem [ref=e107]:
+            - link "Cost Analytics" [ref=e108] [cursor=pointer]:
+              - /url: /costs
+              - img [ref=e109]
+              - generic [ref=e112]: Cost Analytics
+          - listitem [ref=e113]:
+            - link "AI Debugger" [ref=e114] [cursor=pointer]:
+              - /url: /chat
+              - img [ref=e115]
+              - generic [ref=e117]: AI Debugger
+    - list [ref=e119]:
+      - listitem [ref=e120]:
+        - link "Settings" [ref=e121] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e122]
+          - generic [ref=e125]: Settings
+  - main [ref=e126]:
+    - button "Toggle Sidebar" [ref=e128]:
+      - img
+      - generic [ref=e129]: Toggle Sidebar
+    - main [ref=e130]:
+      - generic [ref=e131]:
+        - generic [ref=e132]:
+          - generic [ref=e133]:
+            - heading "Cost Analytics" [level=1] [ref=e134]
+            - paragraph [ref=e135]: Monitor and optimize your GCP spending
+          - combobox [ref=e136]:
+            - generic: Last 30 days
+            - img
+        - generic [ref=e137]:
+          - generic [ref=e138]:
+            - generic [ref=e139]:
+              - generic [ref=e140]: Total Spend (MTD)
+              - img [ref=e141]
+            - generic [ref=e144]:
+              - generic [ref=e145]: $984.47
+              - paragraph [ref=e146]: of $1160.00 budget
+          - generic [ref=e147]:
+            - generic [ref=e148]:
+              - generic [ref=e149]: Budget Used
+              - img [ref=e150]
+            - generic [ref=e154]: 84.9%
+          - generic [ref=e157]:
+            - generic [ref=e158]:
+              - generic [ref=e159]: Forecast (EOM)
+              - img [ref=e160]
+            - generic [ref=e163]:
+              - generic [ref=e164]: $1132.14
+              - paragraph [ref=e165]: Based on current usage
+          - generic [ref=e166]:
+            - generic [ref=e167]:
+              - generic [ref=e168]: vs Last Month
+              - img [ref=e169]
+            - generic [ref=e172]:
+              - generic [ref=e173]: "-8.5%"
+              - paragraph [ref=e174]: $89.45 savings
+        - generic [ref=e175]:
+          - generic [ref=e176]:
+            - generic [ref=e177]: Cost by Service
+            - generic [ref=e178]: Breakdown of spending across GCP services
+          - table [ref=e181]:
+            - rowgroup [ref=e182]:
+              - row "Service Cost (MTD) Budget % Used Change Status" [ref=e183]:
+                - columnheader "Service" [ref=e184]
+                - columnheader "Cost (MTD)" [ref=e185]
+                - columnheader "Budget" [ref=e186]
+                - columnheader "% Used" [ref=e187]
+                - columnheader "Change" [ref=e188]
+                - columnheader "Status" [ref=e189]
+            - rowgroup [ref=e190]:
+              - row "Cloud Run $456.78 $500.00 91% +12% Over Budget" [ref=e191]:
+                - cell "Cloud Run" [ref=e192]
+                - cell "$456.78" [ref=e193]
+                - cell "$500.00" [ref=e194]
+                - cell "91%" [ref=e195]:
+                  - generic [ref=e199]: 91%
+                - cell "+12%" [ref=e200]:
+                  - generic [ref=e201]: +12%
+                - cell "Over Budget" [ref=e202]:
+                  - generic [ref=e203]: Over Budget
+              - row "BigQuery $234.56 $300.00 78% -5% Warning" [ref=e204]:
+                - cell "BigQuery" [ref=e205]
+                - cell "$234.56" [ref=e206]
+                - cell "$300.00" [ref=e207]
+                - cell "78%" [ref=e208]:
+                  - generic [ref=e212]: 78%
+                - cell "-5%" [ref=e213]:
+                  - generic [ref=e214]: "-5%"
+                - cell "Warning" [ref=e215]:
+                  - generic [ref=e216]: Warning
+              - row "Cloud Storage $123.45 $150.00 82% +8% Warning" [ref=e217]:
+                - cell "Cloud Storage" [ref=e218]
+                - cell "$123.45" [ref=e219]
+                - cell "$150.00" [ref=e220]
+                - cell "82%" [ref=e221]:
+                  - generic [ref=e225]: 82%
+                - cell "+8%" [ref=e226]:
+                  - generic [ref=e227]: +8%
+                - cell "Warning" [ref=e228]:
+                  - generic [ref=e229]: Warning
+              - row "Cloud Functions $89.12 $100.00 89% +25% Warning" [ref=e230]:
+                - cell "Cloud Functions" [ref=e231]
+                - cell "$89.12" [ref=e232]
+                - cell "$100.00" [ref=e233]
+                - cell "89%" [ref=e234]:
+                  - generic [ref=e238]: 89%
+                - cell "+25%" [ref=e239]:
+                  - generic [ref=e240]: +25%
+                - cell "Warning" [ref=e241]:
+                  - generic [ref=e242]: Warning
+              - row "Pub/Sub $45.67 $60.00 76% -2% Warning" [ref=e243]:
+                - cell "Pub/Sub" [ref=e244]
+                - cell "$45.67" [ref=e245]
+                - cell "$60.00" [ref=e246]
+                - cell "76%" [ref=e247]:
+                  - generic [ref=e251]: 76%
+                - cell "-2%" [ref=e252]:
+                  - generic [ref=e253]: "-2%"
+                - cell "Warning" [ref=e254]:
+                  - generic [ref=e255]: Warning
+              - row "Cloud Logging $34.89 $50.00 70% +15% On Track" [ref=e256]:
+                - cell "Cloud Logging" [ref=e257]
+                - cell "$34.89" [ref=e258]
+                - cell "$50.00" [ref=e259]
+                - cell "70%" [ref=e260]:
+                  - generic [ref=e264]: 70%
+                - cell "+15%" [ref=e265]:
+                  - generic [ref=e266]: +15%
+                - cell "On Track" [ref=e267]:
+                  - generic [ref=e268]: On Track
+  - region "Notifications alt+T"
+  - generic:
+    - contentinfo:
+      - button "Open TanStack Router Devtools" [ref=e269] [cursor=pointer]:
+        - generic [ref=e270]:
+          - img [ref=e272]
+          - img [ref=e308]
+        - generic [ref=e343]: "-"
+        - generic [ref=e344]: TanStack Router
+```

@@ -1,0 +1,200 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e6]:
+    - list [ref=e8]:
+      - listitem [ref=e9]:
+        - link "Glass Pane GCP Infrastructure Portal" [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e12]
+          - generic [ref=e17]:
+            - generic [ref=e18]: Glass Pane
+            - generic [ref=e19]: GCP Infrastructure Portal
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: Navigation
+        - list [ref=e24]:
+          - listitem [ref=e25]:
+            - link "Dashboard" [ref=e26] [cursor=pointer]:
+              - /url: /
+              - img [ref=e27]
+              - generic [ref=e32]: Dashboard
+          - listitem [ref=e33]:
+            - link "Log Explorer" [ref=e34] [cursor=pointer]:
+              - /url: /logs
+              - img [ref=e35]
+              - generic [ref=e40]: Log Explorer
+      - generic [ref=e41]:
+        - generic [ref=e42]: GCP Services
+        - list [ref=e44]:
+          - listitem [ref=e46]:
+            - button "Services" [expanded] [ref=e47]:
+              - img [ref=e48]
+              - generic [ref=e53]: Services
+              - img [ref=e54]
+            - list [ref=e57]:
+              - listitem [ref=e58]:
+                - link "Cloud Run" [ref=e59] [cursor=pointer]:
+                  - /url: /services/cloud-run
+                  - img [ref=e60]
+                  - generic [ref=e62]: Cloud Run
+              - listitem [ref=e63]:
+                - link "Functions" [ref=e64] [cursor=pointer]:
+                  - /url: /services/functions
+                  - img [ref=e65]
+                  - generic [ref=e67]: Functions
+              - listitem [ref=e68]:
+                - link "GKE" [ref=e69] [cursor=pointer]:
+                  - /url: /services/gke
+                  - img [ref=e70]
+                  - generic [ref=e74]: GKE
+              - listitem [ref=e75]:
+                - link "Compute Engine" [ref=e76] [cursor=pointer]:
+                  - /url: /services/compute
+                  - img [ref=e77]
+                  - generic [ref=e82]: Compute Engine
+              - listitem [ref=e83]:
+                - link "Cloud Storage" [ref=e84] [cursor=pointer]:
+                  - /url: /services/storage
+                  - img [ref=e85]
+                  - generic [ref=e90]: Cloud Storage
+              - listitem [ref=e91]:
+                - link "BigQuery" [ref=e92] [cursor=pointer]:
+                  - /url: /services/bigquery
+                  - img [ref=e93]
+                  - generic [ref=e97]: BigQuery
+              - listitem [ref=e98]:
+                - link "Pub/Sub" [ref=e99] [cursor=pointer]:
+                  - /url: /services/pubsub
+                  - img [ref=e100]
+                  - generic [ref=e102]: Pub/Sub
+      - generic [ref=e103]:
+        - generic [ref=e104]: Tools
+        - list [ref=e106]:
+          - listitem [ref=e107]:
+            - link "Cost Analytics" [ref=e108] [cursor=pointer]:
+              - /url: /costs
+              - img [ref=e109]
+              - generic [ref=e112]: Cost Analytics
+          - listitem [ref=e113]:
+            - link "AI Debugger" [ref=e114] [cursor=pointer]:
+              - /url: /chat
+              - img [ref=e115]
+              - generic [ref=e117]: AI Debugger
+    - list [ref=e119]:
+      - listitem [ref=e120]:
+        - link "Settings" [ref=e121] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e122]
+          - generic [ref=e125]: Settings
+  - main [ref=e126]:
+    - button "Toggle Sidebar" [ref=e128]:
+      - img
+      - generic [ref=e129]: Toggle Sidebar
+    - main [ref=e130]:
+      - generic [ref=e131]:
+        - generic [ref=e132]:
+          - generic [ref=e133]:
+            - heading "Cloud Run Services" [level=1] [ref=e134]
+            - paragraph [ref=e135]: Manage and monitor your Cloud Run deployments
+          - button "Refresh" [ref=e136]:
+            - img
+            - text: Refresh
+        - generic [ref=e137]:
+          - generic [ref=e138]:
+            - generic [ref=e140]: Total Services
+            - generic [ref=e142]: "3"
+          - generic [ref=e143]:
+            - generic [ref=e145]: Total Requests (24h)
+            - generic [ref=e147]: 7,802
+          - generic [ref=e148]:
+            - generic [ref=e150]: Avg Error Rate
+            - generic [ref=e152]: 2.7%
+          - generic [ref=e153]:
+            - generic [ref=e155]: Avg P95 Latency
+            - generic [ref=e157]: 91ms
+        - generic [ref=e158]:
+          - generic [ref=e159]:
+            - generic [ref=e160]: Services
+            - generic [ref=e161]: All Cloud Run services in your project
+          - table [ref=e164]:
+            - rowgroup [ref=e165]:
+              - row "Service Status Region Revision Traffic Requests Error Rate P95" [ref=e166]:
+                - columnheader "Service" [ref=e167]
+                - columnheader "Status" [ref=e168]
+                - columnheader "Region" [ref=e169]
+                - columnheader "Revision" [ref=e170]
+                - columnheader "Traffic" [ref=e171]
+                - columnheader "Requests" [ref=e172]
+                - columnheader "Error Rate" [ref=e173]
+                - columnheader "P95" [ref=e174]
+                - columnheader [ref=e175]
+            - rowgroup [ref=e176]:
+              - row "glass-pane READY us-central1 glass-pane-00062-jb5 100% 1,234 2.0% 120ms" [ref=e177]:
+                - cell "glass-pane" [ref=e178]:
+                  - generic [ref=e179]:
+                    - generic [ref=e180]: glass-pane
+                    - link [ref=e181] [cursor=pointer]:
+                      - /url: https://glass-pane-845772051724.us-central1.run.app
+                      - img [ref=e182]
+                - cell "READY" [ref=e186]:
+                  - generic [ref=e187]: READY
+                - cell "us-central1" [ref=e188]
+                - cell "glass-pane-00062-jb5" [ref=e189]
+                - cell "100%" [ref=e190]
+                - cell "1,234" [ref=e191]
+                - cell "2.0%" [ref=e192]:
+                  - generic [ref=e193]: 2.0%
+                - cell "120ms" [ref=e194]
+                - cell [ref=e195]:
+                  - button [ref=e196]:
+                    - img
+              - row "api-gateway READY us-central1 api-gateway-00015-abc 100% 5,678 5.0% 89ms" [ref=e197]:
+                - cell "api-gateway" [ref=e198]:
+                  - generic [ref=e199]:
+                    - generic [ref=e200]: api-gateway
+                    - link [ref=e201] [cursor=pointer]:
+                      - /url: https://api-gateway-845772051724.us-central1.run.app
+                      - img [ref=e202]
+                - cell "READY" [ref=e206]:
+                  - generic [ref=e207]: READY
+                - cell "us-central1" [ref=e208]
+                - cell "api-gateway-00015-abc" [ref=e209]
+                - cell "100%" [ref=e210]
+                - cell "5,678" [ref=e211]
+                - cell "5.0%" [ref=e212]:
+                  - generic [ref=e213]: 5.0%
+                - cell "89ms" [ref=e214]
+                - cell [ref=e215]:
+                  - button [ref=e216]:
+                    - img
+              - row "auth-service DEPLOYING us-central1 auth-service-00008-xyz 80% 890 1.0% 65ms" [ref=e217]:
+                - cell "auth-service" [ref=e218]:
+                  - generic [ref=e219]:
+                    - generic [ref=e220]: auth-service
+                    - link [ref=e221] [cursor=pointer]:
+                      - /url: https://auth-service-845772051724.us-central1.run.app
+                      - img [ref=e222]
+                - cell "DEPLOYING" [ref=e226]:
+                  - generic [ref=e227]: DEPLOYING
+                - cell "us-central1" [ref=e228]
+                - cell "auth-service-00008-xyz" [ref=e229]
+                - cell "80%" [ref=e230]
+                - cell "890" [ref=e231]
+                - cell "1.0%" [ref=e232]:
+                  - generic [ref=e233]: 1.0%
+                - cell "65ms" [ref=e234]
+                - cell [ref=e235]:
+                  - button [ref=e236]:
+                    - img
+  - region "Notifications alt+T"
+  - generic:
+    - contentinfo:
+      - button "Open TanStack Router Devtools" [ref=e237] [cursor=pointer]:
+        - generic [ref=e238]:
+          - img [ref=e240]
+          - img [ref=e276]
+        - generic [ref=e311]: "-"
+        - generic [ref=e312]: TanStack Router
+```

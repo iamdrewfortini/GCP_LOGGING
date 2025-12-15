@@ -1,0 +1,25 @@
+alerts:
+  - name: "5xx Rate Alert"
+    query: "SELECT COUNT(*) FROM `central_logging_v1.view_canonical_logs` WHERE status >= 500 AND event_ts > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 5 MINUTE)"
+    threshold: 10
+    condition: ">"
+    message: "High 5xx rate detected in the last 5 minutes"
+    severity: "critical"
+  - name: "Latency P95 Alert"
+    query: "SELECT APPROX_QUANTILES(latency_s, 100)[OFFSET(95)] FROM `central_logging_v1.view_canonical_logs` WHERE event_ts > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)"
+    threshold: 5.0
+    condition: ">"
+    message: "P95 latency exceeded 5 seconds in the last hour"
+    severity: "warning"
+  - name: "Error Cluster Growth"
+    query: "SELECT COUNT(*) FROM (SELECT error_fingerprint, COUNT(*) AS cnt FROM `central_logging_v1.view_canonical_logs` WHERE severity = 'ERROR' AND event_ts > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 MINUTE) GROUP BY error_fingerprint HAVING cnt > 5)"
+    threshold: 1
+    condition: ">="
+    message: "New error cluster growing rapidly"
+    severity: "warning"
+  - name: "Audit Anomalies"
+    query: "SELECT COUNT(*) FROM audit_logs WHERE status = 'PERMISSION_DENIED' AND event_ts > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)"
+    threshold: 5
+    condition: ">"
+    message: "Multiple permission denied events in audit logs"
+    severity: "info"

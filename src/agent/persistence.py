@@ -10,20 +10,23 @@ def persist_agent_run(
     run_id: str,
     user_query: str,
     status: str,
-    scope: Dict[str, Any] = {},
-    graph_state: Dict[str, Any] = {},
-    tool_calls: Dict[str, Any] = {},
-    evidence: List[Dict[str, Any]] = [],
-    cost_summary: Dict[str, Any] = {},
-    runbook_ids: List[str] = [],
+    scope: Optional[Dict[str, Any]] = None,
+    graph_state: Optional[Dict[str, Any]] = None,
+    tool_calls: Optional[Dict[str, Any]] = None,
+    evidence: Optional[List[Dict[str, Any]]] = None,
+    cost_summary: Optional[Dict[str, Any]] = None,
+    runbook_ids: Optional[List[str]] = None,
     confidence: float = 0.0,
     error: Optional[str] = None
 ):
     table_id = f"{config.PROJECT_ID_AGENT}.{config.AGENT_DATASET}.agent_runs"
     
-    # Check if table exists, create if not (simplified for this context, ideally terraform/migration)
-    # For now, we assume the setup phase handles table creation or we do a lazy check.
-    # Given the prompt tasks, T5 is tool layer + artifact write.
+    scope = scope or {}
+    graph_state = graph_state or {}
+    tool_calls = tool_calls or {}
+    evidence = evidence or []
+    cost_summary = cost_summary or {}
+    runbook_ids = runbook_ids or []
     
     row = {
         "run_id": run_id,

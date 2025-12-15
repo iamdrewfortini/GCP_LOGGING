@@ -1,0 +1,32 @@
+id: "bq_list_datasets"
+name: "BigQuery List Datasets"
+description: "Lists all datasets in the configured BigQuery project."
+version: "1.0.0"
+
+inputs:
+  type: "object"
+  properties:
+    project_id:
+      type: "string"
+      description: "Optional project ID. Defaults to the configured logs project."
+      default: null
+  required: []
+
+policy:
+  requires_approval: false
+  max_duration_ms: 5000
+  allowed_datasets: ["*"]
+  deny_keywords: []
+
+execution:
+  runtime: "python"
+  module: "google.cloud.bigquery"
+  function: "Client.list_datasets" # This is a simplification; usually we wrap this. 
+  # For this generator, we'll assume we are wrapping our own service functions.
+  # Let's point to a service function we will stub or exist.
+  service_module: "src.services.bigquery_service"
+  service_function: "list_datasets"
+
+audit:
+  log_inputs: true
+  log_outputs: false # Dataset list might be large or non-sensitive, but let's be safe

@@ -1,0 +1,57 @@
+{
+  "phases": [
+    {
+      "id": "phase_1",
+      "name": "Foundation: Redis & Qdrant",
+      "tasks": [
+        {
+          "id": "p1_t1",
+          "description": "Install redis and qdrant-client dependencies",
+          "verification_cmd": "pip list | grep -E 'redis|qdrant'"
+        },
+        {
+          "id": "p1_t2",
+          "description": "Implement RedisService (Connection + Queue Primitives)",
+          "verification_cmd": "python -c 'from src.services.redis_service import redis_service; print(redis_service.ping())'"
+        },
+        {
+          "id": "p1_t3",
+          "description": "Implement QdrantService (Connection + Collection Setup with Time Schema)",
+          "verification_cmd": "python -c 'from src.services.qdrant_service import qdrant_service; print(qdrant_service.get_collections())'"
+        },
+        {
+          "id": "p1_t4",
+          "description": "Refactor API to init these services on startup",
+          "verification_cmd": "curl http://localhost:8080/health"
+        }
+      ]
+    },
+    {
+      "id": "phase_2",
+      "name": "Async Pipeline (Redis Queues)",
+      "tasks": [
+        {
+          "id": "p2_t1",
+          "description": "Implement Worker Entrypoint (consumes redis:q:embeddings)",
+          "verification_cmd": "python src/workers/main.py --dry-run"
+        },
+        {
+          "id": "p2_t2",
+          "description": "Implement 'Embed & Offload' logic (Worker -> Qdrant)",
+          "verification_cmd": "python scripts/test_pipeline.py"
+        }
+      ]
+    },
+    {
+      "id": "phase_3",
+      "name": "Full RAG & Artifacts",
+      "tasks": [
+        {
+          "id": "p3_t1",
+          "description": "Implement Repo Indexer using Qdrant",
+          "verification_cmd": "python scripts/index_repo.py"
+        }
+      ]
+    }
+  ]
+}

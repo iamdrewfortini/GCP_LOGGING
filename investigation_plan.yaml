@@ -1,0 +1,24 @@
+tool_calls:
+  - tool: search_logs_tool
+    input:
+      query: "api/sessions"
+      severity: "ERROR"
+      service: "glass-pane"
+      hours: 1
+      limit: 50
+  - tool: bq_query_tool
+    input:
+      sql: "SELECT TIMESTAMP_TRUNC(event_ts, MINUTE) AS minute, requestUrl, COUNT(*) AS c FROM normalized_logs WHERE service='glass-pane' AND status>=500 AND event_ts > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 60 MINUTE) GROUP BY minute, requestUrl ORDER BY minute DESC LIMIT 200"
+      limit: 200
+  - tool: trace_lookup_tool
+    input:
+      trace: "projects/diatonic-ai-gcp/traces/7fc2b7e17e6a5c559cb588b6d2c19a05"
+      project: "diatonic-ai-gcp"
+  - tool: repo_search_tool
+    input:
+      pattern: "/api/sessions"
+      paths: ["src/glass_pane"]
+  - tool: service_health_tool
+    input:
+      service: "glass-pane"
+      region: "us-central1"

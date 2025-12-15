@@ -1,0 +1,245 @@
+# Page snapshot
+
+```yaml
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - list:
+                - listitem:
+                  - link:
+                    - /url: /
+                    - generic:
+                      - img
+                    - generic:
+                      - generic: Glass Pane
+                      - generic: GCP Infrastructure Portal
+            - generic:
+              - generic:
+                - generic: Navigation
+                - generic:
+                  - list:
+                    - listitem:
+                      - link:
+                        - /url: /
+                        - img
+                        - generic: Dashboard
+                    - listitem:
+                      - link:
+                        - /url: /logs
+                        - img
+                        - generic: Log Explorer
+              - generic:
+                - generic: GCP Services
+                - generic:
+                  - list:
+                    - generic:
+                      - listitem:
+                        - button [expanded]:
+                          - img
+                          - generic: Services
+                          - img
+                        - generic:
+                          - list:
+                            - listitem:
+                              - link:
+                                - /url: /services/cloud-run
+                                - img
+                                - generic: Cloud Run
+                            - listitem:
+                              - link:
+                                - /url: /services/functions
+                                - img
+                                - generic: Functions
+                            - listitem:
+                              - link:
+                                - /url: /services/gke
+                                - img
+                                - generic: GKE
+                            - listitem:
+                              - link:
+                                - /url: /services/compute
+                                - img
+                                - generic: Compute Engine
+                            - listitem:
+                              - link:
+                                - /url: /services/storage
+                                - img
+                                - generic: Cloud Storage
+                            - listitem:
+                              - link:
+                                - /url: /services/bigquery
+                                - img
+                                - generic: BigQuery
+                            - listitem:
+                              - link:
+                                - /url: /services/pubsub
+                                - img
+                                - generic: Pub/Sub
+              - generic:
+                - generic: Tools
+                - generic:
+                  - list:
+                    - listitem:
+                      - link:
+                        - /url: /costs
+                        - img
+                        - generic: Cost Analytics
+                    - listitem:
+                      - link:
+                        - /url: /chat
+                        - img
+                        - generic: AI Debugger
+            - generic:
+              - list:
+                - listitem:
+                  - link:
+                    - /url: /settings
+                    - img
+                    - generic: Settings
+      - main:
+        - generic:
+          - button:
+            - img
+            - generic: Toggle Sidebar
+        - main:
+          - generic:
+            - generic:
+              - generic:
+                - heading [level=1]: Cost Analytics
+                - paragraph: Monitor and optimize your GCP spending
+              - combobox [expanded]:
+                - generic: Last 30 days
+                - img
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Total Spend (MTD)
+                  - img
+                - generic:
+                  - generic: $984.47
+                  - paragraph: of $1160.00 budget
+              - generic:
+                - generic:
+                  - generic: Budget Used
+                  - img
+                - generic:
+                  - generic: 84.9%
+              - generic:
+                - generic:
+                  - generic: Forecast (EOM)
+                  - img
+                - generic:
+                  - generic: $1132.14
+                  - paragraph: Based on current usage
+              - generic:
+                - generic:
+                  - generic: vs Last Month
+                  - img
+                - generic:
+                  - generic: "-8.5%"
+                  - paragraph: $89.45 savings
+            - generic:
+              - generic:
+                - generic: Cost by Service
+                - generic: Breakdown of spending across GCP services
+              - generic:
+                - generic:
+                  - table:
+                    - rowgroup:
+                      - row:
+                        - columnheader: Service
+                        - columnheader: Cost (MTD)
+                        - columnheader: Budget
+                        - columnheader: "% Used"
+                        - columnheader: Change
+                        - columnheader: Status
+                    - rowgroup:
+                      - row:
+                        - cell: Cloud Run
+                        - cell: $456.78
+                        - cell: $500.00
+                        - cell:
+                          - generic:
+                            - generic: 91%
+                        - cell:
+                          - generic: +12%
+                        - cell:
+                          - generic: Over Budget
+                      - row:
+                        - cell: BigQuery
+                        - cell: $234.56
+                        - cell: $300.00
+                        - cell:
+                          - generic:
+                            - generic: 78%
+                        - cell:
+                          - generic: "-5%"
+                        - cell:
+                          - generic: Warning
+                      - row:
+                        - cell: Cloud Storage
+                        - cell: $123.45
+                        - cell: $150.00
+                        - cell:
+                          - generic:
+                            - generic: 82%
+                        - cell:
+                          - generic: +8%
+                        - cell:
+                          - generic: Warning
+                      - row:
+                        - cell: Cloud Functions
+                        - cell: $89.12
+                        - cell: $100.00
+                        - cell:
+                          - generic:
+                            - generic: 89%
+                        - cell:
+                          - generic: +25%
+                        - cell:
+                          - generic: Warning
+                      - row:
+                        - cell: Pub/Sub
+                        - cell: $45.67
+                        - cell: $60.00
+                        - cell:
+                          - generic:
+                            - generic: 76%
+                        - cell:
+                          - generic: "-2%"
+                        - cell:
+                          - generic: Warning
+                      - row:
+                        - cell: Cloud Logging
+                        - cell: $34.89
+                        - cell: $50.00
+                        - cell:
+                          - generic:
+                            - generic: 70%
+                        - cell:
+                          - generic: +15%
+                        - cell:
+                          - generic: On Track
+      - region "Notifications alt+T"
+      - button [ref=e1] [cursor=pointer]:
+        - generic [ref=e2]:
+          - img [ref=e4]
+          - img [ref=e59]
+        - generic [ref=e113]: "-"
+        - generic [ref=e114]: TanStack Router
+  - listbox [ref=e115]:
+    - option "Last 7 days" [ref=e116]:
+      - generic [ref=e118]: Last 7 days
+    - option "Last 30 days" [active] [selected] [ref=e119]:
+      - generic [ref=e121]:
+        - img
+      - generic [ref=e122]: Last 30 days
+    - option "Last 90 days" [ref=e123]:
+      - generic [ref=e125]: Last 90 days
+    - option "Year to date" [ref=e126]:
+      - generic [ref=e128]: Year to date
+```

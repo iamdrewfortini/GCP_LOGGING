@@ -1,0 +1,56 @@
+{
+  "title": "Glass-Pane Sessions Monitoring Dashboard",
+  "filters": [
+    {"name": "service", "type": "select", "values": ["glass-pane"]},
+    {"name": "severity", "type": "select", "values": ["ERROR", "WARNING"]},
+    {"name": "endpoint", "type": "text"},
+    {"name": "user_id", "type": "text"},
+    {"name": "traceId", "type": "text"}
+  ],
+  "panels": [
+    {
+      "title": "Requests by Status",
+      "type": "time_series",
+      "query": "SELECT TIMESTAMP_TRUNC(event_ts, MINUTE) AS time, status, COUNT(*) FROM view_canonical_logs WHERE service = 'glass-pane' GROUP BY time, status ORDER BY time"
+    },
+    {
+      "title": "Top Endpoints by 5xx Rate",
+      "type": "table",
+      "query": "SELECT requestUrl, COUNT(*) AS count FROM errors_by_endpoint WHERE status >= 500 GROUP BY requestUrl ORDER BY count DESC LIMIT 10"
+    },
+    {
+      "title": "Latency P95 by Service+Endpoint",
+      "type": "line_chart",
+      "query": "SELECT hour, service, requestUrl, p95_latency FROM latency_p95 ORDER BY hour"
+    },
+    {
+      "title": "Error Clusters",
+      "type": "table",
+      "query": "SELECT error_fingerprint, COUNT(*) AS count, display_message FROM view_canonical_logs WHERE severity = 'ERROR' GROUP BY error_fingerprint, display_message ORDER BY count DESC LIMIT 20"
+    },
+    {
+      "title": "Trace Explorer",
+      "type": "list",
+      "query": "SELECT trace, spanId, event_ts, display_message FROM view_canonical_logs WHERE trace IS NOT NULL AND severity = 'ERROR' ORDER BY event_ts DESC LIMIT 50"
+    },
+    {
+      "title": "Audit Anomalies",
+      "type": "bar_chart",
+      "query": "SELECT TIMESTAMP_TRUNC(event_ts, HOUR) AS hour, COUNT(*) AS count FROM audit_logs WHERE status = 'PERMISSION_DENIED' GROUP BY hour ORDER BY hour"
+    }
+  ],
+  "alerts": [
+    {
+      "name": "5xx Rate Alert",
+      "condition": "SELECT COUNT(*) FROM view_canonical_logs WHERE status >= 500 AND event_ts > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 5 MINUTE) > 10",
+      "threshold": 10,
+      "message": "High 5xx rate detected"
+    },
+    {
+      "name": "Latency P95 Alert",
+      "condition": "SELECT p95_latency FROM latency_p95 WHERE hour = TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), HOUR) AND p95_latency > 5.0",
+      "threshold": 5.0,
+      "message": "High latency detected"
+    }
+  ]
+}

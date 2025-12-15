@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a centralized logging and visualization platform for Google Cloud Platform. It uses a Hub-and-Spoke architecture to aggregate logs from all projects in a GCP Organization into a central BigQuery dataset, with a Flask web UI ("Glass Pane") for visualization and an AI-powered log analysis agent.
+This is a centralized logging and visualization platform for Google Cloud Platform. It uses a Hub-and-Spoke architecture to aggregate logs from all projects in a GCP Organization into a central BigQuery dataset, with a React frontend ("Glass Pane") for visualization and an AI-powered log analysis agent.
 
 ## Core Architecture
 
@@ -16,10 +16,12 @@ This is a centralized logging and visualization platform for Google Cloud Platfo
    - `org-central-sink-alerts` → Pub/Sub Topic `logging-critical-alerts` (triggers Cloud Function for ERROR/CRITICAL logs)
 
 ### Key Components
-- **Unified Cloud Run Service** (`src/api/main.py`): FastAPI app that serves the UI (templates) + log APIs + agent streaming endpoint
-- **Glass Pane UI layer** (`src/glass_pane/`): HTML template + canonical BigQuery query builder
+- **React Frontend** (`frontend/`): Vite + React + TypeScript application with TanStack Router/Query
+- **FastAPI Backend** (`src/api/main.py`): REST API for logs, sessions, chat, and saved queries
+- **Query Builder** (`src/glass_pane/`): Canonical BigQuery query builder for log retrieval
 - **Log Processor** (`functions/log-processor/`): Cloud Function triggered by Pub/Sub for real-time alert processing
-- **Agent** (`src/agent/`): LangGraph-based Gemini agent for AI-assisted log analysis
+- **Agent** (`src/agent/`): LangGraph-based Gemini 2.5 Flash agent for AI-assisted log analysis
+- **Firebase Service** (`src/services/firebase_service.py`): Firestore-based session and query persistence
 
 ### BigQuery Schema Strategy
 Logs are stored in multiple tables by resource type (e.g., `cloudaudit_googleapis_com_activity`, `run_googleapis_com_stdout`, `syslog`). The `QueryBuilder` unions these tables with a canonical schema:
@@ -35,25 +37,47 @@ Logs are stored in multiple tables by resource type (e.g., `cloudaudit_googleapi
 
 ## Development Commands
 
-### Local Development
+### Local Development (Full Stack)
+
 ```bash
-# Set up Python virtual environment
-python3 -m venv .venv
+# 1. Start Firebase Emulators (in terminal 1)
+firebase emulators:start
+
+# 2. Start Backend with Emulator connection (in terminal 2)
 source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run unified service locally (requires GCP credentials)
-export PROJECT_ID_LOGS=diatonic-ai-gcp
-export PROJECT_ID_AGENT=diatonic-ai-gcp
-export PROJECT_ID_FINOPS=diatonic-ai-gcp
-export CANONICAL_VIEW=org_observability.logs_canonical_v2
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-
+export FIRESTORE_EMULATOR_HOST="127.0.0.1:8181"
+export PROJECT_ID="diatonic-ai-gcp"
 uvicorn src.api.main:app --host 0.0.0.0 --port 8080 --reload
-# Access UI at http://localhost:8080/
-# Agent SSE at http://localhost:8080/api/chat
+
+# 3. Start Frontend (in terminal 3)
+cd frontend
+npm run dev
+
+# Access:
+# - Frontend: http://localhost:5173
+# - Backend API: http://localhost:8080/api
+# - Firebase Emulator UI: http://localhost:4000
+```
+
+### Using the Dev Script
+
+```bash
+# Start everything (emulators + backend)
+./scripts/dev_local.sh
+
+# Start only emulators
+./scripts/dev_local.sh --emulators-only
+
+# Start only backend (assumes emulators running)
+./scripts/dev_local.sh --app-only
+```
+
+### Backend Only (No Firebase)
+
+```bash
+source .venv/bin/activate
+export FIREBASE_ENABLED=false
+uvicorn src.api.main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
 ### Deployment
@@ -102,24 +126,35 @@ gcloud functions deploy log-processor \
 # Generate sample traffic to populate BigQuery
 ./scripts/generate_traffic.sh
 
-# Test Glass Pane API endpoints
+# Test API endpoints
 curl "http://localhost:8080/api/logs?severity=ERROR&limit=10"
-curl "http://localhost:8080/api/facets"
+curl "http://localhost:8080/api/stats/severity"
+curl "http://localhost:8080/api/stats/services"
 curl "http://localhost:8080/health"
 ```
 
 ## Configuration
 
-### Environment Variables
+### Backend Environment Variables
 - `PROJECT_ID`: GCP project ID (default: `diatonic-ai-gcp`)
 - `DATASET_ID`: BigQuery dataset name (default: `central_logging_v1`)
 - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account key (for local dev)
-- `PORT`: Flask server port (default: `8080`)
+- `FIRESTORE_EMULATOR_HOST`: Firestore emulator connection (e.g., `127.0.0.1:8181`)
+- `FIREBASE_ENABLED`: Set to `false` to disable Firebase (default: `true`)
+- `PORT`: Server port (default: `8080`)
+
+### Frontend Environment Variables (in `frontend/.env.local`)
+- `VITE_API_URL`: Backend API URL (default: Cloud Run URL)
+- `VITE_USE_FIREBASE_EMULATORS`: Set to `true` for local emulators
+- `VITE_FIREBASE_PROJECT_ID`: Firebase project ID
+- See `frontend/.env.example` for full list
 
 ### Key Configuration Files
+- `firebase.json`: Firebase emulator configuration (ports: Auth 9099, Firestore 8181, Storage 9199, etc.)
 - `config/gcs_lifecycle.json`: GCS bucket lifecycle policy (30d Standard → 90d Coldline → 365d Archive)
 - `dashboards/glass_pane.json`: Cloud Monitoring dashboard definition
 - `scripts/deploy_scaffold.sh`: Master deployment script with all resource names and IAM bindings
+- `scripts/dev_local.sh`: Local development script with emulator setup
 
 ## Development Patterns
 
@@ -133,22 +168,28 @@ When a new log table appears in the BigQuery dataset, update `QueryBuilder.get_c
 6. `json_payload_str` (serialized JSON)
 7. `display_message` (textPayload or relevant message field)
 
-### Flask API Endpoints
-All endpoints are defined in `app/glass-pane/main.py`:
-- `GET /api/logs`: Paginated, filterable log retrieval (query params: `from`, `to`, `severity`, `service`, `limit`, `cursor`)
-- `GET /api/logs/:trace_id/:span_id`: Single log retrieval by trace and span
-- `GET /api/facets`: Aggregated facet data (severities, services, source_tables)
-- `GET /api/tail`: Server-Sent Events (SSE) for real-time log tailing
-- `POST /api/chat`: Gemini agent interaction for log analysis
+### API Endpoints
+All endpoints are defined in `src/api/main.py`:
+- `GET /`: API info and available endpoints
 - `GET /health`: Health check endpoint
+- `GET /api/logs`: Paginated, filterable log retrieval (query params: `hours`, `severity`, `service`, `search`, `limit`)
+- `GET /api/stats/severity`: Log counts by severity level
+- `GET /api/stats/services`: Log counts by service
+- `POST /api/sessions`: Create a new chat session
+- `GET /api/sessions`: List user's sessions
+- `GET /api/sessions/{id}`: Get session with messages
+- `POST /api/sessions/{id}/archive`: Archive a session
+- `POST /api/saved-queries`: Save a reusable log query
+- `GET /api/saved-queries`: List user's saved queries
+- `POST /api/chat`: Gemini agent SSE streaming for log analysis
 
 ### Agent Tool Development
-The Gemini agent uses LangGraph with custom tools defined in `app/glass-pane/services/agent_service.py`. To add a new tool:
+The Gemini agent uses LangGraph with custom tools defined in `src/agent/tools.py`. To add a new tool:
 1. Define a function decorated with `@tool`
-2. Add it to `LogDebuggerAgent.tools` list
-3. Update `decide_what_to_do()` router logic if the tool requires specific routing
+2. Add it to the agent's tools list in `src/agent/graph.py`
+3. The agent workflow handles routing automatically (diagnose → verify → optimize → persist)
 
-**Security Note**: The agent redacts sensitive information (API keys, tokens, passwords) before sending log context to the LLM. Update `_redact_sensitive_info()` regex patterns as needed.
+**Security Note**: The agent redacts sensitive information (API keys, tokens, passwords) before sending log context to the LLM.
 
 ## IAM and Permissions
 
@@ -162,8 +203,9 @@ The Gemini agent uses LangGraph with custom tools defined in `app/glass-pane/ser
 
 ### Security Considerations
 - The Cloud Run service is currently `--allow-unauthenticated` for demo purposes. In production, protect with Identity-Aware Proxy (IAP).
-- Content Security Policy (CSP) headers are enforced via `@app.after_request` in `main.py`.
-- Sensitive data is redacted before LLM processing, but audit the redaction patterns regularly.
+- CORS is configured to allow specific frontend origins only.
+- Firestore security rules restrict access by user ID.
+- Sensitive data is redacted before LLM processing.
 
 ## Troubleshooting
 
@@ -188,6 +230,7 @@ The Gemini agent uses LangGraph with custom tools defined in `app/glass-pane/ser
 ## Reference Documentation
 
 - Architecture overview: `docs/ARCHITECTURE.md`
+- Frontend architecture: `docs/FRONTEND_ARCHITECTURE.md`
 - Operational runbook: `docs/RUNBOOK.md`
 - Log storage ADR: `docs/ADR_0001_LOG_STORAGE.md`
 - GCP Organization ID: `93534264368`

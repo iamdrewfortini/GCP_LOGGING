@@ -1,0 +1,214 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e6]:
+    - list [ref=e8]:
+      - listitem [ref=e9]:
+        - link "Glass Pane GCP Infrastructure Portal" [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e12]
+          - generic [ref=e14]:
+            - generic [ref=e15]: Glass Pane
+            - generic [ref=e16]: GCP Infrastructure Portal
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]: Navigation
+        - list [ref=e21]:
+          - listitem [ref=e22]:
+            - link "Dashboard" [ref=e23] [cursor=pointer]:
+              - /url: /
+              - img [ref=e24]
+              - generic [ref=e29]: Dashboard
+          - listitem [ref=e30]:
+            - link "Log Explorer" [ref=e31] [cursor=pointer]:
+              - /url: /logs
+              - img [ref=e32]
+              - generic [ref=e35]: Log Explorer
+      - generic [ref=e36]:
+        - generic [ref=e37]: GCP Services
+        - list [ref=e39]:
+          - listitem [ref=e41]:
+            - button "Services" [expanded] [ref=e42]:
+              - img [ref=e43]
+              - generic [ref=e46]: Services
+              - img [ref=e47]
+            - list [ref=e50]:
+              - listitem [ref=e51]:
+                - link "Cloud Run" [ref=e52] [cursor=pointer]:
+                  - /url: /services/cloud-run
+                  - img [ref=e53]
+                  - generic [ref=e55]: Cloud Run
+              - listitem [ref=e56]:
+                - link "Functions" [ref=e57] [cursor=pointer]:
+                  - /url: /services/functions
+                  - img [ref=e58]
+                  - generic [ref=e60]: Functions
+              - listitem [ref=e61]:
+                - link "GKE" [ref=e62] [cursor=pointer]:
+                  - /url: /services/gke
+                  - img [ref=e63]
+                  - generic [ref=e66]: GKE
+              - listitem [ref=e67]:
+                - link "Compute Engine" [ref=e68] [cursor=pointer]:
+                  - /url: /services/compute
+                  - img [ref=e69]
+                  - generic [ref=e72]: Compute Engine
+              - listitem [ref=e73]:
+                - link "Cloud Storage" [ref=e74] [cursor=pointer]:
+                  - /url: /services/storage
+                  - img [ref=e75]
+                  - generic [ref=e78]: Cloud Storage
+              - listitem [ref=e79]:
+                - link "BigQuery" [ref=e80] [cursor=pointer]:
+                  - /url: /services/bigquery
+                  - img [ref=e81]
+                  - generic [ref=e85]: BigQuery
+              - listitem [ref=e86]:
+                - link "Pub/Sub" [ref=e87] [cursor=pointer]:
+                  - /url: /services/pubsub
+                  - img [ref=e88]
+                  - generic [ref=e90]: Pub/Sub
+      - generic [ref=e91]:
+        - generic [ref=e92]: Tools
+        - list [ref=e94]:
+          - listitem [ref=e95]:
+            - link "Cost Analytics" [ref=e96] [cursor=pointer]:
+              - /url: /costs
+              - img [ref=e97]
+              - generic [ref=e99]: Cost Analytics
+          - listitem [ref=e100]:
+            - link "AI Debugger" [ref=e101] [cursor=pointer]:
+              - /url: /chat
+              - img [ref=e102]
+              - generic [ref=e104]: AI Debugger
+    - list [ref=e106]:
+      - listitem [ref=e107]:
+        - link "Settings" [ref=e108] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e109]
+          - generic [ref=e112]: Settings
+  - main [ref=e113]:
+    - button "Toggle Sidebar" [ref=e115]:
+      - img
+      - generic [ref=e116]: Toggle Sidebar
+    - main [ref=e117]:
+      - generic [ref=e118]:
+        - generic [ref=e119]:
+          - generic [ref=e121]:
+            - generic [ref=e122]: Sessions
+            - button [ref=e123]:
+              - img
+          - generic [ref=e128]:
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e129]:
+              - generic [ref=e130]:
+                - generic [ref=e131]: Show me all errors from the last hour
+                - generic [ref=e132]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e133]:
+              - generic [ref=e134]:
+                - generic [ref=e135]: Show me all errors from the last hour
+                - generic [ref=e136]: 12/15/2025
+            - button "test 12/15/2025" [ref=e137]:
+              - generic [ref=e138]:
+                - generic [ref=e139]: test
+                - generic [ref=e140]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e141]:
+              - generic [ref=e142]:
+                - generic [ref=e143]: Show me all errors from the last hour
+                - generic [ref=e144]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e145]:
+              - generic [ref=e146]:
+                - generic [ref=e147]: Show me all errors from the last hour
+                - generic [ref=e148]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e149]:
+              - generic [ref=e150]:
+                - generic [ref=e151]: Show me all errors from the last hour
+                - generic [ref=e152]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e153]:
+              - generic [ref=e154]:
+                - generic [ref=e155]: Show me all errors from the last hour
+                - generic [ref=e156]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e157]:
+              - generic [ref=e158]:
+                - generic [ref=e159]: Show me all errors from the last hour
+                - generic [ref=e160]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e161]:
+              - generic [ref=e162]:
+                - generic [ref=e163]: Show me all errors from the last hour
+                - generic [ref=e164]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e165]:
+              - generic [ref=e166]:
+                - generic [ref=e167]: Show me all errors from the last hour
+                - generic [ref=e168]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e169]:
+              - generic [ref=e170]:
+                - generic [ref=e171]: Show me all errors from the last hour
+                - generic [ref=e172]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e173]:
+              - generic [ref=e174]:
+                - generic [ref=e175]: Show me all errors from the last hour
+                - generic [ref=e176]: 12/15/2025
+            - button "Show me all errors from the last hour 12/15/2025" [ref=e177]:
+              - generic [ref=e178]:
+                - generic [ref=e179]: Show me all errors from the last hour
+                - generic [ref=e180]: 12/15/2025
+            - button "Give me a health summary of all logs 12/15/2025" [ref=e181]:
+              - generic [ref=e182]:
+                - generic [ref=e183]: Give me a health summary of all logs
+                - generic [ref=e184]: 12/15/2025
+            - button "Give me a health summary of all logs 12/15/2025" [ref=e185]:
+              - generic [ref=e186]:
+                - generic [ref=e187]: Give me a health summary of all logs
+                - generic [ref=e188]: 12/15/2025
+            - button "check all my logs and provide a summary 12/15/2025" [ref=e189]:
+              - generic [ref=e190]:
+                - generic [ref=e191]: check all my logs and provide a summary
+                - generic [ref=e192]: 12/15/2025
+        - generic [ref=e193]:
+          - generic [ref=e195]:
+            - generic [ref=e196]:
+              - img [ref=e198]
+              - generic [ref=e201]:
+                - generic [ref=e202]: AI Log Debugger
+                - paragraph [ref=e203]: Powered by Gemini - Intelligent log analysis
+            - generic [ref=e204]:
+              - button "Clear" [ref=e205]:
+                - img
+                - text: Clear
+              - button "New" [ref=e206]:
+                - img
+                - text: New
+          - generic [ref=e210]:
+            - generic [ref=e211]:
+              - img [ref=e213]
+              - generic [ref=e216]:
+                - generic [ref=e218]: Show me all errors from the last hour
+                - generic [ref=e219]: 2:52:00 AM
+            - generic [ref=e220]:
+              - img [ref=e222]
+              - generic [ref=e225]:
+                - generic [ref=e226]: Generating...
+                - generic [ref=e227]: 2:52:00 AM
+            - generic [ref=e228]:
+              - img [ref=e229]
+              - text: Analyzing logs...
+          - generic [ref=e231]:
+            - generic [ref=e232]:
+              - generic [ref=e233]:
+                - img [ref=e234]
+                - textbox "Ask about your logs, errors, traces..." [disabled]
+              - button [ref=e237]:
+                - img
+            - paragraph [ref=e238]:
+              - img [ref=e239]
+              - text: "Try: \"Show me errors from the last hour\" or \"Health summary\""
+  - region "Notifications alt+T"
+  - generic:
+    - contentinfo:
+      - button "Open TanStack Router Devtools" [ref=e242] [cursor=pointer]:
+        - generic [ref=e243]:
+          - img [ref=e245]
+          - img [ref=e280]
+        - generic [ref=e314]: "-"
+        - generic [ref=e315]: TanStack Router
+```
