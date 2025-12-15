@@ -63,4 +63,12 @@ output_path
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+
+# Firebase CLI local cache
+.firebase/
+
+# Local state files
+.checkpoint_batch_embed.json
+*.backup
+
 .SECRETS/
