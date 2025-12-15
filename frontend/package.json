@@ -30,7 +30,7 @@
     "test:install": "playwright install --with-deps"
   },
   "dependencies": {
-    "@apollo/client": "3.11.0",
+    "@apollo/client": "3.13.0",
     "@radix-ui/react-avatar": "1.1.11",
     "@radix-ui/react-collapsible": "1.1.12",
     "@radix-ui/react-dialog": "1.1.15",
