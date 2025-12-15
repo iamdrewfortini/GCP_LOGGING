@@ -24,11 +24,11 @@ class GlassPaneConfig:
   # GCP / BigQuery
   logs_project_id: str = field(default_factory=_get_logs_project_id)
 
-  # Dataset + view name (without project), e.g. "org_observability.logs_canonical_v2"
+  # Dataset + table name (without project), e.g. "central_logging_v1.master_logs"
   canonical_view: str = field(
     default_factory=lambda: os.environ.get(
       "CANONICAL_VIEW",
-      "org_observability.logs_canonical_v2",
+      "central_logging_v1.master_logs",
     )
   )
 

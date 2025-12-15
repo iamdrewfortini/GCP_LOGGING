@@ -54,30 +54,62 @@ class LogQueryParams:
 
 
 class CanonicalQueryBuilder:
-  """Builder for canonical log view queries."""
+  """Builder for canonical log queries against master_logs table."""
 
   DISPLAY_FIELDS = [
-    "insert_id",
+    "log_id",
     "event_timestamp",
     "severity",
     "service_name",
-    "log_name",
-    "display_message",
+    "source_log_name",
+    "message",
     "source_table",
+    "stream_id",
     "trace_id",
     "span_id",
+    "log_type",
+    "resource_type",
   ]
 
-  def __init__(self, project_id: str, view_name: str):
+  # Universal Envelope fields from the canonical view
+  ENVELOPE_FIELDS = [
+    "universal_envelope.event_id AS envelope_event_id",
+    "universal_envelope.event_ts AS envelope_event_ts",
+    "universal_envelope.service.name AS envelope_service_name",
+    "universal_envelope.trace.trace_id AS envelope_trace_id",
+    "universal_envelope.actor.user_id AS envelope_user_id",
+    "universal_envelope.privacy.pii_risk AS envelope_pii_risk",
+    "universal_envelope.environment AS envelope_environment",
+    "universal_envelope.correlation.request_id AS envelope_request_id",
+    "universal_envelope.correlation.session_id AS envelope_session_id",
+  ]
+
+  # Canonical view name for envelope queries
+  CANONICAL_VIEW = "org_logs_norm.v_logs_all_entry_canon"
+
+  def __init__(
+    self,
+    project_id: str,
+    view_name: str = "central_logging_v1.master_logs",
+    include_envelope: bool = False
+  ):
     self.project_id = project_id
     self.view_name = view_name
     self.full_view = f"{project_id}.{view_name}"
+    self.include_envelope = include_envelope
 
-  def build_list_query(self, params: LogQueryParams) -> Dict[str, Any]:
+  def build_list_query(self, params: LogQueryParams, use_envelope: bool = False) -> Dict[str, Any]:
+    from datetime import datetime, timedelta
+
     bq_params = []
     where_clauses = []
 
-    # Time window filter (always required for performance)
+    # Partition filter for performance (master_logs is partitioned by log_date)
+    start_date = (datetime.utcnow() - timedelta(hours=params.hours)).strftime("%Y-%m-%d")
+    end_date = datetime.utcnow().strftime("%Y-%m-%d")
+    where_clauses.append(f"log_date BETWEEN '{start_date}' AND '{end_date}'")
+
+    # Time window filter
     where_clauses.append(
       "event_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @hours HOUR)"
     )
@@ -94,7 +126,7 @@ class CanonicalQueryBuilder:
       bq_params.append(bigquery.ScalarQueryParameter("service", "STRING", f"%{params.service}%"))
 
     if params.search:
-      where_clauses.append("(display_message LIKE @search OR json_payload LIKE @search)")
+      where_clauses.append("(message LIKE @search OR CAST(json_payload AS STRING) LIKE @search)")
       bq_params.append(bigquery.ScalarQueryParameter("search", "STRING", f"%{params.search}%"))
 
     if params.source_table:
@@ -105,12 +137,23 @@ class CanonicalQueryBuilder:
 
     bq_params.append(bigquery.ScalarQueryParameter("limit", "INT64", params.limit))
 
-    fields = ", ".join(self.DISPLAY_FIELDS)
+    # Build field list - include envelope fields if requested
+    fields_list = self.DISPLAY_FIELDS.copy()
+    if use_envelope or self.include_envelope:
+      fields_list.extend(self.ENVELOPE_FIELDS)
+
+    fields = ", ".join(fields_list)
     where = " AND ".join(where_clauses)
+
+    # Use canonical view for envelope queries
+    if use_envelope or self.include_envelope:
+      view = f"{self.project_id}.{self.CANONICAL_VIEW}"
+    else:
+      view = self.full_view
 
     sql = f"""
       SELECT {fields}
-      FROM `{self.full_view}`
+      FROM `{view}`
       WHERE {where}
       ORDER BY event_timestamp DESC
       LIMIT @limit
@@ -119,12 +162,17 @@ class CanonicalQueryBuilder:
     return {"sql": sql.strip(), "params": bq_params}
 
   def build_count_by_severity_query(self, hours: int = 24) -> Dict[str, Any]:
+    from datetime import datetime, timedelta
+    start_date = (datetime.utcnow() - timedelta(hours=hours)).strftime("%Y-%m-%d")
+    end_date = datetime.utcnow().strftime("%Y-%m-%d")
+
     sql = f"""
       SELECT
         severity,
         COUNT(*) as count
       FROM `{self.full_view}`
-      WHERE event_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @hours HOUR)
+      WHERE log_date BETWEEN '{start_date}' AND '{end_date}'
+        AND event_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @hours HOUR)
       GROUP BY severity
       ORDER BY count DESC
     """
@@ -132,13 +180,18 @@ class CanonicalQueryBuilder:
     return {"sql": sql.strip(), "params": params}
 
   def build_count_by_service_query(self, hours: int = 24) -> Dict[str, Any]:
+    from datetime import datetime, timedelta
+    start_date = (datetime.utcnow() - timedelta(hours=hours)).strftime("%Y-%m-%d")
+    end_date = datetime.utcnow().strftime("%Y-%m-%d")
+
     sql = f"""
       SELECT
         service_name,
         COUNT(*) as count,
         COUNTIF(severity IN ('ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY')) as error_count
       FROM `{self.full_view}`
-      WHERE event_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @hours HOUR)
+      WHERE log_date BETWEEN '{start_date}' AND '{end_date}'
+        AND event_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @hours HOUR)
       GROUP BY service_name
       ORDER BY count DESC
     """
@@ -146,13 +199,19 @@ class CanonicalQueryBuilder:
     return {"sql": sql.strip(), "params": params}
 
   def build_source_table_stats_query(self, hours: int = 24) -> Dict[str, Any]:
+    from datetime import datetime, timedelta
+    start_date = (datetime.utcnow() - timedelta(hours=hours)).strftime("%Y-%m-%d")
+    end_date = datetime.utcnow().strftime("%Y-%m-%d")
+
     sql = f"""
       SELECT
         source_table,
+        stream_id,
         COUNT(*) as count
       FROM `{self.full_view}`
-      WHERE event_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @hours HOUR)
-      GROUP BY source_table
+      WHERE log_date BETWEEN '{start_date}' AND '{end_date}'
+        AND event_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @hours HOUR)
+      GROUP BY source_table, stream_id
       ORDER BY count DESC
     """
     params = [bigquery.ScalarQueryParameter("hours", "INT64", hours)]
