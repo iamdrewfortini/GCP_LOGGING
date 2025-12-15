@@ -55,9 +55,8 @@ class FirebaseService:
         return cls._instance
 
     def __init__(self) -> None:
-        if not self._initialized:
-            self._initialize_firebase()
-            FirebaseService._initialized = True
+        # Defer initialization until first use to avoid credential issues during import
+        pass
 
     @classmethod
     def _initialize_firebase(cls) -> None:
@@ -84,8 +83,9 @@ class FirebaseService:
     @property
     def db(self) -> firestore.Client:
         """Get Firestore client."""
-        if self._db is None:
+        if not self._initialized:
             self._initialize_firebase()
+            FirebaseService._initialized = True
         return self._db
 
     @property
