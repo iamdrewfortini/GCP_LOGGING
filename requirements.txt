@@ -14,3 +14,8 @@ langgraph
 pydantic
 pytest
 httpx
+tiktoken
+
+# Redis and Qdrant for memory architecture
+redis>=5.0.0
+qdrant-client>=1.7.0
