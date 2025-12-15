@@ -1,26 +1,29 @@
 """
-Firebase service for realtime database integration.
+Firebase service for Firestore and Realtime Database integration.
 
-Uses Firebase Realtime DB for realtime updates, with Redis as edge cache.
+Uses Firestore for session/query persistence and optional Realtime DB for updates.
 """
 
 import os
 import json
 import logging
-from typing import Optional, Any, Dict
+import uuid
+from datetime import datetime
+from typing import Optional, Any, Dict, List
 import firebase_admin
-from firebase_admin import credentials, db
+from firebase_admin import credentials, db, firestore
 from src.services.redis_service import RedisService
 
 logger = logging.getLogger(__name__)
 
 class FirebaseService:
-    """Firebase realtime service with Redis cache."""
+    """Firebase service with Firestore for persistence and optional Realtime DB."""
 
     def __init__(self):
         self.redis = RedisService()
         self.app = None
         self.db_ref = None
+        self.firestore_db = None
         self._init_firebase()
 
     def _init_firebase(self):
@@ -29,6 +32,7 @@ class FirebaseService:
             # Skip if already initialized
             if firebase_admin._apps:
                 self.app = firebase_admin.get_app()
+                self.firestore_db = firestore.client()
                 try:
                     self.db_ref = db.reference()
                 except Exception:
@@ -52,6 +56,9 @@ class FirebaseService:
                 options['databaseURL'] = db_url
 
             self.app = firebase_admin.initialize_app(cred, options)
+
+            # Initialize Firestore
+            self.firestore_db = firestore.client()
 
             if db_url:
                 self.db_ref = db.reference()
@@ -107,6 +114,204 @@ class FirebaseService:
     def push_query_result(self, query_id: str, result: Dict[str, Any]):
         """Push query result for realtime frontend."""
         self.set_realtime_data(f"queries/{query_id}", result)
+
+    # ============================================
+    # SESSION MANAGEMENT (Firestore)
+    # ============================================
+
+    def create_session(self, user_id: str, title: str = "New Session") -> str:
+        """Create a new chat session."""
+        if not self.firestore_db:
+            raise RuntimeError("Firestore not initialized")
+
+        session_id = str(uuid.uuid4())
+        now = datetime.utcnow()
+
+        session_data = {
+            "id": session_id,
+            "user_id": user_id,
+            "title": title,
+            "status": "active",
+            "created_at": now,
+            "updated_at": now,
+            "message_count": 0,
+        }
+
+        self.firestore_db.collection("sessions").document(session_id).set(session_data)
+        logger.info(f"Created session {session_id} for user {user_id}")
+        return session_id
+
+    def list_sessions(self, user_id: str, status: str = "active", limit: int = 50) -> List[Dict[str, Any]]:
+        """List user's sessions."""
+        if not self.firestore_db:
+            return []
+
+        try:
+            query = (
+                self.firestore_db.collection("sessions")
+                .where("user_id", "==", user_id)
+                .where("status", "==", status)
+                .order_by("updated_at", direction=firestore.Query.DESCENDING)
+                .limit(limit)
+            )
+
+            sessions = []
+            for doc in query.stream():
+                session = doc.to_dict()
+                # Convert timestamps to ISO strings
+                if session.get("created_at"):
+                    session["created_at"] = session["created_at"].isoformat() if hasattr(session["created_at"], 'isoformat') else str(session["created_at"])
+                if session.get("updated_at"):
+                    session["updated_at"] = session["updated_at"].isoformat() if hasattr(session["updated_at"], 'isoformat') else str(session["updated_at"])
+                sessions.append(session)
+
+            return sessions
+        except Exception as e:
+            logger.error(f"Error listing sessions: {e}")
+            return []
+
+    def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """Get a session by ID."""
+        if not self.firestore_db:
+            return None
+
+        try:
+            doc = self.firestore_db.collection("sessions").document(session_id).get()
+            if doc.exists:
+                session = doc.to_dict()
+                # Convert timestamps
+                if session.get("created_at"):
+                    session["created_at"] = session["created_at"].isoformat() if hasattr(session["created_at"], 'isoformat') else str(session["created_at"])
+                if session.get("updated_at"):
+                    session["updated_at"] = session["updated_at"].isoformat() if hasattr(session["updated_at"], 'isoformat') else str(session["updated_at"])
+
+                # Get messages
+                messages = self.get_session_messages(session_id)
+                session["messages"] = messages
+
+                return session
+            return None
+        except Exception as e:
+            logger.error(f"Error getting session: {e}")
+            return None
+
+    def archive_session(self, session_id: str) -> bool:
+        """Archive a session."""
+        if not self.firestore_db:
+            return False
+
+        try:
+            self.firestore_db.collection("sessions").document(session_id).update({
+                "status": "archived",
+                "updated_at": datetime.utcnow(),
+            })
+            return True
+        except Exception as e:
+            logger.error(f"Error archiving session: {e}")
+            return False
+
+    def add_message(self, session_id: str, role: str, content: str, metadata: Optional[Dict] = None) -> str:
+        """Add a message to a session."""
+        if not self.firestore_db:
+            raise RuntimeError("Firestore not initialized")
+
+        message_id = str(uuid.uuid4())
+        now = datetime.utcnow()
+
+        message_data = {
+            "id": message_id,
+            "session_id": session_id,
+            "role": role,
+            "content": content,
+            "timestamp": now,
+            "metadata": metadata or {},
+        }
+
+        self.firestore_db.collection("sessions").document(session_id).collection("messages").document(message_id).set(message_data)
+
+        # Update session
+        self.firestore_db.collection("sessions").document(session_id).update({
+            "updated_at": now,
+            "message_count": firestore.Increment(1),
+        })
+
+        return message_id
+
+    def get_session_messages(self, session_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get messages for a session."""
+        if not self.firestore_db:
+            return []
+
+        try:
+            query = (
+                self.firestore_db.collection("sessions").document(session_id)
+                .collection("messages")
+                .order_by("timestamp")
+                .limit(limit)
+            )
+
+            messages = []
+            for doc in query.stream():
+                msg = doc.to_dict()
+                if msg.get("timestamp"):
+                    msg["timestamp"] = msg["timestamp"].isoformat() if hasattr(msg["timestamp"], 'isoformat') else str(msg["timestamp"])
+                messages.append(msg)
+
+            return messages
+        except Exception as e:
+            logger.error(f"Error getting messages: {e}")
+            return []
+
+    # ============================================
+    # SAVED QUERIES (Firestore)
+    # ============================================
+
+    def save_query(self, user_id: str, name: str, query_params: Dict[str, Any]) -> str:
+        """Save a reusable query."""
+        if not self.firestore_db:
+            raise RuntimeError("Firestore not initialized")
+
+        query_id = str(uuid.uuid4())
+        now = datetime.utcnow()
+
+        query_data = {
+            "id": query_id,
+            "user_id": user_id,
+            "name": name,
+            "query_params": query_params,
+            "created_at": now,
+            "updated_at": now,
+        }
+
+        self.firestore_db.collection("saved_queries").document(query_id).set(query_data)
+        return query_id
+
+    def list_saved_queries(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """List user's saved queries."""
+        if not self.firestore_db:
+            return []
+
+        try:
+            query = (
+                self.firestore_db.collection("saved_queries")
+                .where("user_id", "==", user_id)
+                .order_by("updated_at", direction=firestore.Query.DESCENDING)
+                .limit(limit)
+            )
+
+            queries = []
+            for doc in query.stream():
+                q = doc.to_dict()
+                if q.get("created_at"):
+                    q["created_at"] = q["created_at"].isoformat() if hasattr(q["created_at"], 'isoformat') else str(q["created_at"])
+                if q.get("updated_at"):
+                    q["updated_at"] = q["updated_at"].isoformat() if hasattr(q["updated_at"], 'isoformat') else str(q["updated_at"])
+                queries.append(q)
+
+            return queries
+        except Exception as e:
+            logger.error(f"Error listing saved queries: {e}")
+            return []
 
 # Global instance
 firebase_service = FirebaseService()
