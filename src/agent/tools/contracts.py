@@ -23,21 +23,26 @@ class BQQueryOutput(BaseModel):
     cache_hit: bool
 
 class LogEvent(BaseModel):
-    event_ts: str
+    """Log event model matching master_logs schema."""
+    event_timestamp: str  # Previously event_ts
     severity: str
-    service: str
+    service_name: str  # Previously service
     source_table: str
-    display_message: str
+    message: str  # Previously display_message
     json_payload: Optional[Dict[str, Any]] = None
-    trace: Optional[str] = None
-    spanId: Optional[str] = None
-    requestUrl: Optional[str] = None
-    requestMethod: Optional[str] = None
-    status: Optional[int] = None
-    latency_s: Optional[float] = None
-    userAgent: Optional[str] = None
-    remoteIp: Optional[str] = None
+    trace_id: Optional[str] = None  # Previously trace
+    span_id: Optional[str] = None  # Previously spanId
+    http_url: Optional[str] = None  # Previously requestUrl
+    http_method: Optional[str] = None  # Previously requestMethod
+    http_status: Optional[int] = None  # Previously status
+    http_latency_ms: Optional[float] = None  # Previously latency_s
+    http_user_agent: Optional[str] = None  # Previously userAgent
+    http_remote_ip: Optional[str] = None  # Previously remoteIp
     error_fingerprint: str
+    # Additional master_logs fields
+    stream_id: Optional[str] = None
+    log_type: Optional[str] = None
+    resource_type: Optional[str] = None
 
 class TraceSpan(BaseModel):
     spanId: str

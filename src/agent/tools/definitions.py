@@ -17,41 +17,52 @@ DEFAULT_LIMIT = 50
 SEVERITY_LEVELS = ["DEBUG", "INFO", "NOTICE", "WARNING", "ERROR", "CRITICAL", "ALERT", "EMERGENCY"]
 
 def normalize_log_event(row: Dict[str, Any]) -> LogEvent:
+    """Normalize a BigQuery row from master_logs to LogEvent model."""
+    # Handle json_payload - can be string or dict from master_logs
     json_payload = None
-    if row.get('json_payload_str'):
-        try:
-            json_payload = json.loads(row['json_payload_str'])
-        except:
-            json_payload = None
+    raw_json = row.get('json_payload')
+    if raw_json:
+        if isinstance(raw_json, str):
+            try:
+                json_payload = json.loads(raw_json)
+            except:
+                json_payload = None
+        elif isinstance(raw_json, dict):
+            json_payload = raw_json
 
-    # Extract fields from json_payload if available
-    requestUrl = json_payload.get('requestUrl') if json_payload else row.get('requestUrl')
-    requestMethod = json_payload.get('requestMethod') if json_payload else row.get('requestMethod')
-    status = json_payload.get('status') if json_payload else row.get('status')
-    latency_s = json_payload.get('latency_s') if json_payload else row.get('latency_s')
-    userAgent = json_payload.get('userAgent') if json_payload else row.get('userAgent')
-    remoteIp = json_payload.get('remoteIp') if json_payload else row.get('remoteIp')
+    # Extract HTTP fields - prefer direct columns, fallback to json_payload
+    http_url = row.get('http_url') or (json_payload.get('requestUrl') if json_payload else None)
+    http_method = row.get('http_method') or (json_payload.get('requestMethod') if json_payload else None)
+    http_status = row.get('http_status') or (json_payload.get('status') if json_payload else None)
+    http_latency_ms = row.get('http_latency_ms') or (json_payload.get('latency_s') if json_payload else None)
+    http_user_agent = row.get('http_user_agent') or (json_payload.get('userAgent') if json_payload else None)
+    http_remote_ip = row.get('http_remote_ip') or (json_payload.get('remoteIp') if json_payload else None)
 
-    # Compute fingerprint
-    key = f"{row['service']}{requestMethod or ''}{requestUrl or ''}{status or ''}{row.get('display_message', '')}"
+    # Compute fingerprint from key fields
+    service = row.get('service_name') or 'unknown'
+    message = row.get('message') or ''
+    key = f"{service}{http_method or ''}{http_url or ''}{http_status or ''}{message}"
     error_fingerprint = hashlib.md5(key.encode()).hexdigest()
 
     return LogEvent(
-        event_ts=row['event_ts'],
-        severity=row['severity'],
-        service=row['service'],
-        source_table=row['source_table'],
-        display_message=row['display_message'],
+        event_timestamp=str(row.get('event_timestamp', '')),
+        severity=row.get('severity', 'DEFAULT'),
+        service_name=service,
+        source_table=row.get('source_table', ''),
+        message=message,
         json_payload=json_payload,
-        trace=row.get('trace'),
-        spanId=row.get('spanId'),
-        requestUrl=requestUrl,
-        requestMethod=requestMethod,
-        status=status,
-        latency_s=latency_s,
-        userAgent=userAgent,
-        remoteIp=remoteIp,
-        error_fingerprint=error_fingerprint
+        trace_id=row.get('trace_id'),
+        span_id=row.get('span_id'),
+        http_url=http_url,
+        http_method=http_method,
+        http_status=http_status,
+        http_latency_ms=http_latency_ms,
+        http_user_agent=http_user_agent,
+        http_remote_ip=http_remote_ip,
+        error_fingerprint=error_fingerprint,
+        stream_id=row.get('stream_id'),
+        log_type=row.get('log_type'),
+        resource_type=row.get('resource_type')
     )
 
 @tool
@@ -108,9 +119,9 @@ def create_view_tool(dataset: str, view_name: str, sql: str) -> Dict[str, Any]:
 @tool
 def search_logs_tool(query: str, severity: Optional[str] = None, service: Optional[str] = None, hours: int = 1, limit: int = 20) -> Dict[str, Any]:
     """
-    Searches logs in the central logging dataset.
+    Searches logs in the central logging dataset (master_logs).
     Args:
-        query: Search term to find in log messages (searches display_message and json_payload_str)
+        query: Search term to find in log messages (searches message and json_payload)
         severity: Optional severity filter (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         service: Optional service filter
         hours: Number of hours to look back (default: 1)
@@ -118,29 +129,41 @@ def search_logs_tool(query: str, severity: Optional[str] = None, service: Option
     """
     from src.config import config
 
-    # Use the canonical view that unions all log tables
+    # Use the unified master_logs table
     project_id = config.PROJECT_ID_LOGS
     dataset_id = "central_logging_v1"
-    view = f"{project_id}.{dataset_id}.view_canonical_logs"
+    table = f"{project_id}.{dataset_id}.master_logs"
 
+    # Calculate partition date for efficient querying
+    start_date = (datetime.utcnow() - timedelta(hours=hours)).strftime("%Y-%m-%d")
+    end_date = datetime.utcnow().strftime("%Y-%m-%d")
     start_time = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
     end_time = datetime.utcnow().isoformat()
 
     sql = f"""
     SELECT
-        event_ts,
+        event_timestamp,
         severity,
-        service,
+        service_name,
         source_table,
-        display_message,
-        json_payload_str,
-        trace,
-        spanId
-    FROM `{view}`
-    WHERE event_ts BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
+        stream_id,
+        message,
+        json_payload,
+        trace_id,
+        span_id,
+        http_url,
+        http_method,
+        http_status,
+        log_type,
+        resource_type
+    FROM `{table}`
+    WHERE log_date BETWEEN @start_date AND @end_date
+      AND event_timestamp BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
     """
 
     params = {
+        "start_date": start_date,
+        "end_date": end_date,
         "start_time": start_time,
         "end_time": end_time
     }
@@ -150,15 +173,15 @@ def search_logs_tool(query: str, severity: Optional[str] = None, service: Option
         params["severity"] = severity
 
     if service:
-        sql += " AND service = @service"
-        params["service"] = service
+        sql += " AND service_name LIKE @service"
+        params["service"] = f"%{service}%"
 
     if query:
-        # Search in display_message and json_payload_str
-        sql += " AND (LOWER(display_message) LIKE LOWER(@query_pattern) OR LOWER(json_payload_str) LIKE LOWER(@query_pattern))"
+        # Search in message and json_payload
+        sql += " AND (LOWER(message) LIKE LOWER(@query_pattern) OR LOWER(CAST(json_payload AS STRING)) LIKE LOWER(@query_pattern))"
         params["query_pattern"] = f"%{query}%"
 
-    sql += f" ORDER BY event_ts DESC LIMIT {limit}"
+    sql += f" ORDER BY event_timestamp DESC LIMIT {limit}"
 
     try:
         res = run_bq_query(BQQueryInput(sql=sql, params=params, max_rows=limit))
@@ -274,8 +297,11 @@ def analyze_logs(
 
     project_id = config.PROJECT_ID_LOGS
     dataset_id = "central_logging_v1"
-    view = f"{project_id}.{dataset_id}.view_canonical_logs"
+    table = f"{project_id}.{dataset_id}.master_logs"
 
+    # Calculate date range for partition pruning
+    start_date = (datetime.utcnow() - timedelta(hours=hours)).strftime("%Y-%m-%d")
+    end_date = datetime.utcnow().strftime("%Y-%m-%d")
     start_time = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
     end_time = datetime.utcnow().isoformat()
 
@@ -290,14 +316,18 @@ def analyze_logs(
         "recommendations": []
     }
 
+    # Common partition filter for all queries
+    partition_filter = f"log_date BETWEEN '{start_date}' AND '{end_date}'"
+
     try:
         # 1. Get severity distribution
         stats_sql = f"""
         SELECT
             severity,
             COUNT(*) as count
-        FROM `{view}`
-        WHERE event_ts BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
+        FROM `{table}`
+        WHERE {partition_filter}
+          AND event_timestamp BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
         GROUP BY severity
         ORDER BY count DESC
         """
@@ -311,47 +341,51 @@ def analyze_logs(
         # 2. Get service distribution
         service_sql = f"""
         SELECT
-            service,
+            service_name,
             COUNT(*) as total,
             COUNTIF(severity IN ('ERROR', 'CRITICAL')) as errors,
             COUNTIF(severity = 'WARNING') as warnings
-        FROM `{view}`
-        WHERE event_ts BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
-        GROUP BY service
+        FROM `{table}`
+        WHERE {partition_filter}
+          AND event_timestamp BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
+        GROUP BY service_name
         ORDER BY errors DESC, total DESC
         LIMIT 10
         """
         service_res = run_bq_query(BQQueryInput(sql=service_sql, params={"start_time": start_time, "end_time": end_time}))
         results["services_affected"] = [
-            {"service": row['service'] or 'unknown', "total": row['total'], "errors": row['errors'], "warnings": row['warnings']}
+            {"service": row['service_name'] or 'unknown', "total": row['total'], "errors": row['errors'], "warnings": row['warnings']}
             for row in service_res.rows
         ]
 
         # 3. Get top errors with details
         error_sql = f"""
         SELECT
-            event_ts,
+            event_timestamp,
             severity,
-            service,
+            service_name,
             source_table,
-            display_message,
-            trace,
-            spanId
-        FROM `{view}`
-        WHERE event_ts BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
-            AND severity IN ('ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY')
-        ORDER BY event_ts DESC
+            message,
+            trace_id,
+            span_id,
+            resource_type
+        FROM `{table}`
+        WHERE {partition_filter}
+          AND event_timestamp BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
+          AND severity IN ('ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY')
+        ORDER BY event_timestamp DESC
         LIMIT 25
         """
         error_res = run_bq_query(BQQueryInput(sql=error_sql, params={"start_time": start_time, "end_time": end_time}))
         results["top_errors"] = [
             {
-                "timestamp": str(row['event_ts']),
+                "timestamp": str(row['event_timestamp']),
                 "severity": row['severity'],
-                "service": row['service'] or 'unknown',
-                "message": (row['display_message'] or '')[:300],
-                "trace_id": row.get('trace'),
-                "source": row['source_table']
+                "service": row['service_name'] or 'unknown',
+                "message": (row['message'] or '')[:300],
+                "trace_id": row.get('trace_id'),
+                "source": row['source_table'],
+                "resource_type": row.get('resource_type')
             }
             for row in error_res.rows
         ]
@@ -359,21 +393,22 @@ def analyze_logs(
         # 4. Get top warnings
         warning_sql = f"""
         SELECT
-            event_ts,
-            service,
-            display_message
-        FROM `{view}`
-        WHERE event_ts BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
-            AND severity = 'WARNING'
-        ORDER BY event_ts DESC
+            event_timestamp,
+            service_name,
+            message
+        FROM `{table}`
+        WHERE {partition_filter}
+          AND event_timestamp BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
+          AND severity = 'WARNING'
+        ORDER BY event_timestamp DESC
         LIMIT 15
         """
         warning_res = run_bq_query(BQQueryInput(sql=warning_sql, params={"start_time": start_time, "end_time": end_time}))
         results["top_warnings"] = [
             {
-                "timestamp": str(row['event_ts']),
-                "service": row['service'] or 'unknown',
-                "message": (row['display_message'] or '')[:200]
+                "timestamp": str(row['event_timestamp']),
+                "service": row['service_name'] or 'unknown',
+                "message": (row['message'] or '')[:200]
             }
             for row in warning_res.rows
         ]
@@ -382,16 +417,17 @@ def analyze_logs(
         if include_patterns and results["top_errors"]:
             pattern_sql = f"""
             SELECT
-                service,
-                REGEXP_EXTRACT(display_message, r'^([A-Za-z]+Error|Exception|[A-Z][a-z]+Exception):?') as error_type,
+                service_name,
+                REGEXP_EXTRACT(message, r'^([A-Za-z]+Error|Exception|[A-Z][a-z]+Exception):?') as error_type,
                 COUNT(*) as occurrences,
-                MIN(event_ts) as first_seen,
-                MAX(event_ts) as last_seen
-            FROM `{view}`
-            WHERE event_ts BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
-                AND severity IN ('ERROR', 'CRITICAL')
-                AND display_message IS NOT NULL
-            GROUP BY service, error_type
+                MIN(event_timestamp) as first_seen,
+                MAX(event_timestamp) as last_seen
+            FROM `{table}`
+            WHERE {partition_filter}
+              AND event_timestamp BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
+              AND severity IN ('ERROR', 'CRITICAL')
+              AND message IS NOT NULL
+            GROUP BY service_name, error_type
             HAVING error_type IS NOT NULL
             ORDER BY occurrences DESC
             LIMIT 10
@@ -400,7 +436,7 @@ def analyze_logs(
                 pattern_res = run_bq_query(BQQueryInput(sql=pattern_sql, params={"start_time": start_time, "end_time": end_time}))
                 results["patterns"] = [
                     {
-                        "service": row['service'] or 'unknown',
+                        "service": row['service_name'] or 'unknown',
                         "error_type": row['error_type'],
                         "occurrences": row['occurrences'],
                         "first_seen": str(row['first_seen']),
@@ -449,8 +485,11 @@ def get_log_summary(hours: int = 24) -> Dict[str, Any]:
     from src.config import config
 
     project_id = config.PROJECT_ID_LOGS
-    view = f"{project_id}.central_logging_v1.view_canonical_logs"
+    table = f"{project_id}.central_logging_v1.master_logs"
 
+    # Calculate date range for partition pruning
+    start_date = (datetime.utcnow() - timedelta(hours=hours)).strftime("%Y-%m-%d")
+    end_date = datetime.utcnow().strftime("%Y-%m-%d")
     start_time = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
     end_time = datetime.utcnow().isoformat()
 
@@ -462,11 +501,12 @@ def get_log_summary(hours: int = 24) -> Dict[str, Any]:
             COUNTIF(severity = 'CRITICAL') as critical,
             COUNTIF(severity = 'WARNING') as warnings,
             COUNTIF(severity = 'INFO') as info,
-            COUNT(DISTINCT service) as services_active,
-            MIN(event_ts) as earliest,
-            MAX(event_ts) as latest
-        FROM `{view}`
-        WHERE event_ts BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
+            COUNT(DISTINCT service_name) as services_active,
+            MIN(event_timestamp) as earliest,
+            MAX(event_timestamp) as latest
+        FROM `{table}`
+        WHERE log_date BETWEEN '{start_date}' AND '{end_date}'
+          AND event_timestamp BETWEEN TIMESTAMP(@start_time) AND TIMESTAMP(@end_time)
         """
 
         res = run_bq_query(BQQueryInput(sql=sql, params={"start_time": start_time, "end_time": end_time}))
@@ -531,23 +571,27 @@ def find_related_logs(
     from src.config import config
 
     project_id = config.PROJECT_ID_LOGS
-    view = f"{project_id}.central_logging_v1.view_canonical_logs"
+    table = f"{project_id}.central_logging_v1.master_logs"
+
+    # Use recent partition for error search
+    recent_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d")
 
     try:
         # First, find the error
         find_sql = f"""
         SELECT
-            event_ts,
+            event_timestamp,
             severity,
-            service,
-            trace,
-            spanId,
-            display_message,
+            service_name,
+            trace_id,
+            span_id,
+            message,
             source_table
-        FROM `{view}`
-        WHERE LOWER(display_message) LIKE LOWER(@pattern)
+        FROM `{table}`
+        WHERE log_date >= '{recent_date}'
+            AND LOWER(message) LIKE LOWER(@pattern)
             AND severity IN ('ERROR', 'CRITICAL', 'WARNING')
-        ORDER BY event_ts DESC
+        ORDER BY event_timestamp DESC
         LIMIT 5
         """
 
@@ -560,16 +604,16 @@ def find_related_logs(
             return {"error": "No matching errors found", "search_term": error_message}
 
         error_log = find_res.rows[0]
-        error_time = error_log['event_ts']
-        error_service = error_log['service']
-        error_trace = error_log.get('trace')
+        error_time = error_log['event_timestamp']
+        error_service = error_log['service_name']
+        error_trace = error_log.get('trace_id')
 
         results = {
             "primary_error": {
                 "timestamp": str(error_time),
                 "severity": error_log['severity'],
                 "service": error_service,
-                "message": error_log['display_message'],
+                "message": error_log['message'],
                 "trace_id": error_trace
             },
             "related_logs": [],
@@ -581,16 +625,17 @@ def find_related_logs(
             # Get logs from same service around the same time
             context_sql = f"""
             SELECT
-                event_ts,
+                event_timestamp,
                 severity,
-                service,
-                display_message,
-                trace
-            FROM `{view}`
-            WHERE service = @service
-                AND event_ts BETWEEN TIMESTAMP_SUB(@error_time, INTERVAL {time_window_minutes} MINUTE)
-                                 AND TIMESTAMP_ADD(@error_time, INTERVAL {time_window_minutes} MINUTE)
-            ORDER BY event_ts
+                service_name,
+                message,
+                trace_id
+            FROM `{table}`
+            WHERE log_date >= '{recent_date}'
+                AND service_name = @service
+                AND event_timestamp BETWEEN TIMESTAMP_SUB(@error_time, INTERVAL {time_window_minutes} MINUTE)
+                                         AND TIMESTAMP_ADD(@error_time, INTERVAL {time_window_minutes} MINUTE)
+            ORDER BY event_timestamp
             LIMIT 50
             """
 
@@ -601,10 +646,10 @@ def find_related_logs(
 
             results["related_logs"] = [
                 {
-                    "timestamp": str(row['event_ts']),
+                    "timestamp": str(row['event_timestamp']),
                     "severity": row['severity'],
-                    "message": (row['display_message'] or '')[:200],
-                    "is_error": row['event_ts'] == error_time
+                    "message": (row['message'] or '')[:200],
+                    "is_error": row['event_timestamp'] == error_time
                 }
                 for row in context_res.rows
             ]
@@ -613,14 +658,15 @@ def find_related_logs(
             if error_trace:
                 trace_sql = f"""
                 SELECT
-                    event_ts,
+                    event_timestamp,
                     severity,
-                    service,
-                    spanId,
-                    display_message
-                FROM `{view}`
-                WHERE trace = @trace
-                ORDER BY event_ts
+                    service_name,
+                    span_id,
+                    message
+                FROM `{table}`
+                WHERE log_date >= '{recent_date}'
+                    AND trace_id = @trace
+                ORDER BY event_timestamp
                 LIMIT 30
                 """
 
@@ -631,11 +677,11 @@ def find_related_logs(
 
                 results["trace_logs"] = [
                     {
-                        "timestamp": str(row['event_ts']),
+                        "timestamp": str(row['event_timestamp']),
                         "severity": row['severity'],
-                        "service": row['service'],
-                        "span_id": row['spanId'],
-                        "message": (row['display_message'] or '')[:200]
+                        "service": row['service_name'],
+                        "span_id": row['span_id'],
+                        "message": (row['message'] or '')[:200]
                     }
                     for row in trace_res.rows
                 ]

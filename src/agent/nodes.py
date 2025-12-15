@@ -20,6 +20,7 @@ from src.agent.tools.definitions import (
 from src.agent.tokenization import TokenBudgetManager, estimate_tool_output_tokens
 from langgraph.prebuilt import ToolNode
 from src.agent.persistence import persist_agent_run
+from src.agent.checkpoint import save_checkpoint
 import json
 import logging
 
@@ -347,6 +348,40 @@ Goal: Provide actionable recommendations and final report.
         "phase": "optimize",
         "token_budget": update_token_budget(state, manager, "optimize"),
     }
+
+def checkpoint_node(state: AgentState):
+    """Checkpoint node - save state snapshot to Firestore.
+
+    Saves current state to Firestore and emits checkpoint event.
+    Phase 3, Task 3.2: Checkpoint Node
+    """
+    try:
+        # Save checkpoint
+        metadata = save_checkpoint(state)
+
+        logger.info(
+            f"Checkpoint created: {metadata.checkpoint_id} "
+            f"(phase={metadata.phase}, tokens={metadata.token_usage.get('total_tokens', 0)})"
+        )
+
+        # Return state with checkpoint metadata
+        return {
+            "status": "checkpoint_saved",
+            "evidence": state.get("evidence", []) + [
+                {
+                    "type": "checkpoint",
+                    "checkpoint_id": metadata.checkpoint_id,
+                    "timestamp": metadata.timestamp,
+                    "phase": metadata.phase,
+                }
+            ],
+        }
+
+    except Exception as e:
+        logger.error(f"Checkpoint failed: {e}")
+        # Non-fatal error - continue execution
+        return {"status": "checkpoint_failed", "error": str(e)}
+
 
 def persist_node(state: AgentState):
     """Persist node - save run to BigQuery with token stats.
