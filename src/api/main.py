@@ -133,7 +133,7 @@ def index(
         # Convert datetime objects to ISO strings for JSON serialization
         for row in rows:
             if row.get("event_timestamp"):
-                row["event_timestamp_iso"] = row["event_timestamp"].isoformat()
+                row["event_timestamp"] = row["event_timestamp"].isoformat()
 
         stats_query = builder.build_source_table_stats_query(hours=safe_hours)
         stats_job = client.query(
@@ -159,19 +159,19 @@ def index(
     except BadRequest as e:
         return templates.TemplateResponse(
             "index.html",
-            {"request": request, "error": f"Query Error: {e.message}", "rows": [], "stats": {}},
+            {"request": request, "error": f"Query Error: {e.message}", "rows": [], "stats": {}, "filters": {}},
             status_code=400,
         )
     except GoogleAPICallError as e:
         return templates.TemplateResponse(
             "index.html",
-            {"request": request, "error": f"BigQuery Error: {str(e)}", "rows": [], "stats": {}},
+            {"request": request, "error": f"BigQuery Error: {str(e)}", "rows": [], "stats": {}, "filters": {}},
             status_code=500,
         )
     except Exception as e:
         return templates.TemplateResponse(
             "index.html",
-            {"request": request, "error": f"System Error: {str(e)}", "rows": [], "stats": {}},
+            {"request": request, "error": f"System Error: {str(e)}", "rows": [], "stats": {}, "filters": {}},
             status_code=500,
         )
 

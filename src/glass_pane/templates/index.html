@@ -247,7 +247,7 @@
                         <tbody id="logsTableBody">
                             {% for row in rows %}
                             <tr class="log-row severity-{{ row.severity }}" data-log-index="{{ loop.index0 }}">
-                                <td><small>{{ row.event_timestamp.strftime('%Y-%m-%d %H:%M:%S') if row.event_timestamp else '' }}</small></td>
+                                <td><small>{{ row.event_timestamp[:19].replace('T', ' ') if row.event_timestamp else '' }}</small></td>
                                 <td>
                                     {% if row.severity in ['ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'] %}
                                     <span class="badge bg-danger">{{ row.severity }}</span>
@@ -376,7 +376,7 @@
             basicInfoTable.className = 'table table-sm';
 
             const basicInfoData = [
-                ['Timestamp', log.event_timestamp_iso || log.event_timestamp || 'N/A'],
+                ['Timestamp', log.event_timestamp || 'N/A'],
                 ['Severity', log.severity || 'N/A'],
                 ['Service', log.service_name || 'N/A'],
                 ['Log Name', log.log_name || 'N/A'],
