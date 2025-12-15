@@ -16,10 +16,10 @@ This is a centralized logging and visualization platform for Google Cloud Platfo
    - `org-central-sink-alerts` → Pub/Sub Topic `logging-critical-alerts` (triggers Cloud Function for ERROR/CRITICAL logs)
 
 ### Key Components
-- **Glass Pane** (`app/glass-pane/`): Flask Cloud Run app that queries BigQuery and serves the visualization UI
+- **Unified Cloud Run Service** (`src/api/main.py`): FastAPI app that serves the UI (templates) + log APIs + agent streaming endpoint
+- **Glass Pane UI layer** (`src/glass_pane/`): HTML template + canonical BigQuery query builder
 - **Log Processor** (`functions/log-processor/`): Cloud Function triggered by Pub/Sub for real-time alert processing
-- **Query Builder** (`app/glass-pane/services/query_builder.py`): Constructs SQL queries over the canonical log view
-- **Agent Service** (`app/glass-pane/services/agent_service.py`): LangGraph-based Gemini agent for AI-assisted log analysis
+- **Agent** (`src/agent/`): LangGraph-based Gemini agent for AI-assisted log analysis
 
 ### BigQuery Schema Strategy
 Logs are stored in multiple tables by resource type (e.g., `cloudaudit_googleapis_com_activity`, `run_googleapis_com_stdout`, `syslog`). The `QueryBuilder` unions these tables with a canonical schema:
@@ -41,33 +41,50 @@ Logs are stored in multiple tables by resource type (e.g., `cloudaudit_googleapi
 python3 -m venv .venv
 source .venv/bin/activate
 
-# Install Glass Pane dependencies
-pip install -r app/glass-pane/requirements.txt
+# Install dependencies
+pip install -r requirements.txt
 
-# Run Glass Pane locally (requires GCP credentials)
-cd app/glass-pane
-export PROJECT_ID=diatonic-ai-gcp
-export DATASET_ID=central_logging_v1
+# Run unified service locally (requires GCP credentials)
+export PROJECT_ID_LOGS=diatonic-ai-gcp
+export PROJECT_ID_AGENT=diatonic-ai-gcp
+export PROJECT_ID_FINOPS=diatonic-ai-gcp
+export CANONICAL_VIEW=org_observability.logs_canonical_v2
 export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-python main.py
-# Access at http://localhost:8080
+
+uvicorn src.api.main:app --host 0.0.0.0 --port 8080 --reload
+# Access UI at http://localhost:8080/
+# Agent SSE at http://localhost:8080/api/chat
 ```
 
 ### Deployment
+
+**Automated Deployment (Recommended)**:
+The repository uses GitHub Actions for continuous deployment. Simply push to the `main` branch:
+```bash
+git push origin main
+```
+
+This triggers the workflow defined in `.github/workflows/deploy.yml` which:
+1. Runs tests and linting
+2. Builds the Docker image and pushes to GCR
+3. Deploys to Cloud Run with proper environment variables
+4. Updates traffic to the new revision
+
+**Manual Deployment**:
 ```bash
 # Deploy entire infrastructure (GCS, BigQuery, Pub/Sub, Cloud Run, Cloud Function)
 cd scripts
 ./deploy_scaffold.sh
 
-# Deploy only Glass Pane app
-cd app/glass-pane
+# Deploy unified Cloud Run service manually
 gcloud builds submit --tag gcr.io/diatonic-ai-gcp/glass-pane
+
 gcloud run deploy glass-pane \
   --image gcr.io/diatonic-ai-gcp/glass-pane \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --set-env-vars PROJECT_ID=diatonic-ai-gcp,DATASET_ID=central_logging_v1
+  --set-env-vars PROJECT_ID_LOGS=diatonic-ai-gcp,PROJECT_ID_AGENT=diatonic-ai-gcp,PROJECT_ID_FINOPS=diatonic-ai-gcp,CANONICAL_VIEW=org_observability.logs_canonical_v2
 
 # Deploy only Log Processor function
 gcloud functions deploy log-processor \
@@ -77,6 +94,8 @@ gcloud functions deploy log-processor \
   --source=functions/log-processor \
   --region=us-central1
 ```
+
+**Important**: When making code changes, always push to `main` to trigger auto-deployment. The GitHub Actions workflow ensures consistent deployments with proper testing.
 
 ### Testing
 ```bash
