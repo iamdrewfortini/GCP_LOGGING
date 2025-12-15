@@ -730,3 +730,148 @@ def suggest_queries(context: str = "") -> Dict[str, Any]:
         ]
 
     return suggestions
+
+
+# ============================================
+# SEMANTIC SEARCH TOOLS (Phase 2)
+# ============================================
+
+@tool
+def semantic_search_logs(
+    query: str,
+    top_k: int = 10,
+    severity: Optional[str] = None,
+    service: Optional[str] = None,
+    score_threshold: float = 0.5
+) -> Dict[str, Any]:
+    """
+    Search logs using semantic similarity (vector search).
+    Use this for natural language queries like "authentication failures",
+    "slow database queries", "memory issues", etc.
+
+    This is more powerful than keyword search for finding related logs
+    that may not contain exact keyword matches.
+
+    Args:
+        query: Natural language description of what you're looking for
+        top_k: Number of results to return (default: 10)
+        severity: Optional severity filter (ERROR, WARNING, INFO, etc.)
+        service: Optional service name filter
+        score_threshold: Minimum similarity score 0-1 (default: 0.5)
+
+    Returns:
+        List of semantically similar log entries with scores
+    """
+    try:
+        from src.services.vector_service import vector_service
+        from src.config import config
+
+        if not vector_service.enabled:
+            return {
+                "error": "Vector search is not enabled",
+                "fallback": "Use search_logs_tool for keyword-based search instead"
+            }
+
+        project_id = config.PROJECT_ID_LOGS
+
+        results = vector_service.semantic_search_logs(
+            query=query,
+            project_id=project_id,
+            top_k=top_k,
+            severity=severity,
+            service=service,
+        )
+
+        if not results:
+            return {
+                "results": [],
+                "message": "No semantically similar logs found. Try a different query or use keyword search."
+            }
+
+        return {
+            "query": query,
+            "results": [
+                {
+                    "score": round(r.score, 3),
+                    "content": r.content,
+                    "severity": r.metadata.get("severity"),
+                    "service": r.metadata.get("service"),
+                    "timestamp": r.timestamp,
+                    "id": r.id
+                }
+                for r in results
+            ],
+            "total_found": len(results)
+        }
+
+    except ImportError:
+        return {
+            "error": "Vector service not available",
+            "fallback": "Use search_logs_tool for keyword-based search"
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@tool
+def find_similar_logs(
+    log_text: str,
+    top_k: int = 5,
+    exclude_self: bool = True
+) -> Dict[str, Any]:
+    """
+    Find logs similar to a given log entry.
+    Use this to find patterns, related errors, or recurring issues.
+
+    Args:
+        log_text: The log message to find similar entries for
+        top_k: Number of similar logs to return (default: 5)
+        exclude_self: Exclude exact matches (default: True)
+
+    Returns:
+        List of similar log entries with similarity scores
+    """
+    try:
+        from src.services.vector_service import vector_service
+        from src.config import config
+
+        if not vector_service.enabled:
+            return {
+                "error": "Vector search is not enabled",
+                "message": "Similar log search requires vector embeddings"
+            }
+
+        project_id = config.PROJECT_ID_LOGS
+
+        results = vector_service.get_similar_logs(
+            log_text=log_text,
+            project_id=project_id,
+            top_k=top_k,
+            exclude_self=exclude_self,
+        )
+
+        if not results:
+            return {
+                "results": [],
+                "message": "No similar logs found in the vector database"
+            }
+
+        return {
+            "source_log": log_text[:200] + "..." if len(log_text) > 200 else log_text,
+            "similar_logs": [
+                {
+                    "similarity_score": round(r.score, 3),
+                    "content": r.content,
+                    "severity": r.metadata.get("severity"),
+                    "service": r.metadata.get("service"),
+                    "timestamp": r.timestamp
+                }
+                for r in results
+            ],
+            "total_found": len(results)
+        }
+
+    except ImportError:
+        return {"error": "Vector service not available"}
+    except Exception as e:
+        return {"error": str(e)}

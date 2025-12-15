@@ -24,17 +24,35 @@ def persist_agent_run(
     cost_summary: Optional[Dict[str, Any]] = None,
     runbook_ids: Optional[List[str]] = None,
     confidence: float = 0.0,
-    error: Optional[str] = None
+    error: Optional[str] = None,
+    token_usage: Optional[Dict[str, int]] = None,
 ):
+    """Persist agent run to BigQuery.
+
+    Args:
+        run_id: Unique run identifier
+        user_query: User's query text
+        status: Run status (completed, failed, etc.)
+        scope: Query scope/context
+        graph_state: LangGraph state snapshot
+        tool_calls: Tool call history
+        evidence: Evidence collected during run
+        cost_summary: Cost breakdown
+        runbook_ids: Associated runbook IDs
+        confidence: Confidence score
+        error: Error message if failed
+        token_usage: Token usage statistics (prompt_tokens, completion_tokens, total_tokens)
+    """
     table_id = f"{config.PROJECT_ID_AGENT}.{config.AGENT_DATASET}.agent_runs"
-    
+
     scope = scope or {}
     graph_state = graph_state or {}
     tool_calls = tool_calls or {}
     evidence = evidence or []
     cost_summary = cost_summary or {}
     runbook_ids = runbook_ids or []
-    
+    token_usage = token_usage or {}
+
     row = {
         "run_id": run_id,
         "ts": datetime.now(timezone.utc).isoformat(),
@@ -47,9 +65,10 @@ def persist_agent_run(
         "runbook_ids": runbook_ids,
         "confidence": confidence,
         "status": status,
-        "error": error
+        "error": error,
+        "token_usage": json.dumps(token_usage),
     }
-    
+
     # Insert
     client = get_client()
     errors = client.insert_rows_json(table_id, [row])
