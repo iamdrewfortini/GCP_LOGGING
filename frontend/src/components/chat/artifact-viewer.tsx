@@ -1,8 +1,6 @@
-import React from 'react';
 import { FileText, Database, BarChart, Code } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Define Artifact Types
 export type ArtifactType = 'sql_query' | 'dashboard_config' | 'json_data' | 'markdown_report' | 'code_snippet';
