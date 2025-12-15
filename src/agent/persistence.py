@@ -4,7 +4,14 @@ import json
 from src.config import config
 from typing import Dict, Any, List, Optional
 
-client = bigquery.Client(project=config.PROJECT_ID_AGENT)
+_client = None
+
+def get_client():
+    """Lazy initialization of BigQuery client."""
+    global _client
+    if _client is None:
+        _client = bigquery.Client(project=config.PROJECT_ID_AGENT)
+    return _client
 
 def persist_agent_run(
     run_id: str,
@@ -44,6 +51,7 @@ def persist_agent_run(
     }
     
     # Insert
+    client = get_client()
     errors = client.insert_rows_json(table_id, [row])
     if errors:
         print(f"Failed to persist agent run: {errors}")

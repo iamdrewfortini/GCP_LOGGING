@@ -1,10 +1,12 @@
 from src.agent.persistence import persist_agent_run
 from unittest.mock import MagicMock, patch
 
-@patch("src.agent.persistence.client")
-def test_mutable_defaults(mock_client):
+@patch("src.agent.persistence.get_client")
+def test_mutable_defaults(mock_get_client):
     # Mock insert_rows_json to avoid actual BQ calls
+    mock_client = MagicMock()
     mock_client.insert_rows_json.return_value = []
+    mock_get_client.return_value = mock_client
     
     # Call 1: Modify the defaults (simulate side effect if they were mutable)
     # We can't easily "modify" the default from outside, but if we pass nothing, 
