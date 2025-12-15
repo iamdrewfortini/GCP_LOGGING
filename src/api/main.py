@@ -499,11 +499,27 @@ async def chat(request: ChatRequest):
                 payload = {"type": kind, "data": {}}
 
                 if kind == "on_chat_model_stream":
-                    content = event["data"]["chunk"].content
-                    if content:
-                        full_response += content
-                        payload["data"] = {"content": content}
-                        yield f"data: {json.dumps(payload)}\n\n"
+                    chunk_content = event["data"]["chunk"].content
+                    if chunk_content:
+                        # Handle both string and list content (Gemini can return list of content blocks)
+                        if isinstance(chunk_content, list):
+                            # Extract text from content blocks
+                            text_parts = []
+                            for part in chunk_content:
+                                if isinstance(part, str):
+                                    text_parts.append(part)
+                                elif isinstance(part, dict) and "text" in part:
+                                    text_parts.append(part["text"])
+                                elif hasattr(part, "text"):
+                                    text_parts.append(part.text)
+                            content = "".join(text_parts)
+                        else:
+                            content = chunk_content
+
+                        if content:
+                            full_response += content
+                            payload["data"] = {"content": content}
+                            yield f"data: {json.dumps(payload)}\n\n"
 
                 elif kind == "on_tool_start":
                     tool_name = event["name"]
