@@ -95,7 +95,7 @@ def index_repository(repo_path: str, project_id: str, commit_hash: str = "latest
                     points=[
                         models.PointStruct(
                             id=point_id,
-                            vector={""": embedding}, # Default dense vector
+                            vector={"dense": embedding},  # Default dense vector
                             payload=payload
                         )
                     ]
