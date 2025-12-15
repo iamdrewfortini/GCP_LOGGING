@@ -1,6 +1,6 @@
 # GCP Centralized Logging & Visualization Scaffold
 
-This repository contains the infrastructure code, configuration, and application code for a scalable, organization-wide logging solution on Google Cloud Platform.
+This repository contains the infrastructure code, configuration, and application code for a scalable, organization-wide logging solution on Google Cloud Platform, now enhanced with Qdrant vector search and Ollama embeddings for advanced semantic log retrieval.
 
 ## Architecture
 
@@ -12,6 +12,14 @@ The solution uses a **Hub-and-Spoke** logging model at the Organization level:
     - Lifecycle: 30 days Standard -> 90 days Coldline -> 365 days Archive.
 4.  **Real-Time (Alerting)**: `org-central-sink-alerts` -> Pub/Sub (`logging-critical-alerts`).
     - Used for: Triggering Cloud Functions or external webhooks for `ERROR` and `CRITICAL` logs.
+5.  **Vector Search**: Logs embedded via Ollama, stored in Qdrant for semantic/filtered/hybrid queries.
+    - Supports chat-based log debugging with tool calling.
+
+## New Features
+- **Semantic Log Search**: Vector similarity on log messages.
+- **Advanced Querying**: Filters, grouping, hybrid fusion, formula rescoring.
+- **Ollama Chat Agent**: Natural language queries via tools.
+- **Continuous Optimization**: Benchmark-gated schema/index tuning.
 
 ## Directory Structure
 
@@ -20,7 +28,11 @@ GCP_LOGGING/
 ├── src/                 # Unified Cloud Run service (FastAPI): UI + API + agent streaming
 │   ├── api/             # FastAPI entrypoint (uvicorn src.api.main:app)
 │   ├── glass_pane/      # UI template + canonical BigQuery query builder
-│   └── agent/           # LangGraph-based log debugger agent
+│   ├── agent/           # LangGraph-based log debugger agent + continuous optimizer
+│   ├── services/        # Qdrant, Ollama, embedding, chat services
+│   ├── pipelines/       # Log ingestion pipeline
+│   ├── schemas/         # Payload validation schemas
+│   └── bench/           # Benchmark harness + tuning recommender
 ├── app/
 │   └── glass-pane/      # Legacy Flask implementation (kept for reference)
 ├── config/
@@ -28,6 +40,10 @@ GCP_LOGGING/
 │   └── ...               # Previous config backups
 ├── dashboards/
 │   └── glass_pane.json   # Cloud Monitoring Dashboard definition
+├── docs/                # Architecture, benchmarks, migrations docs
+├── tests/               # Unit and integration tests
+├── specs/               # Agent specs and configurations
+└── scripts/             # Utility scripts for ingestion and agents
 ├── functions/
 │   └── log-processor/    # Cloud Function triggered by Pub/Sub for real-time alerting
 ├── scripts/

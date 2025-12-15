@@ -1,57 +1,85 @@
-# VALIDATION REPORT
+# Validation Report
 
-## Phase N0: Application End-to-End Validation
+## Backend Validation
+### Unit Tests for Resolvers
+```bash
+cd /home/daclab-ai/GCP_LOGGING
+python -m pytest tests/unit/test_graphql_resolvers.py -v
+```
+**Expected Output**: All tests pass, e.g., `5 passed, 0 failed`.
 
-### 1. Package Identification
-- **App**: `app/glass-pane`
-  - `requirements.txt`: Flask, google-cloud-bigquery, gunicorn, langchain-core, langchain-google-vertexai, langgraph
-  - `Dockerfile`: Python 3.11-slim, gunicorn bind :8080
-- **Functions**: `functions/log-processor`
-  - `requirements.txt`: google-cloud-logging, google-cloud-pubsub
+### Integration Test for /graphql
+```bash
+curl -s -X POST http://localhost:8000/graphql \
+  -H 'content-type: application/json' \
+  -H 'Authorization: Bearer <valid_firebase_token>' \
+  -d '{"query":"query{health{ok version}}"}' | jq
+```
+**Expected Output**:
+```json
+{
+  "data": {
+    "health": {
+      "ok": true,
+      "version": "2.0.0",
+      "services": {
+        "redis": "connected",
+        "qdrant": "connected",
+        "firebase": "connected",
+        "bigquery": "connected"
+      }
+    }
+  }
+}
+```
 
-### 2. Lint & Build
-- **Command**: `python3 -m py_compile app/glass-pane/main.py functions/log-processor/main.py`
-- **Result**: PASS (No syntax errors)
+### Auth Test (Missing Token)
+```bash
+curl -s -X POST http://localhost:8000/graphql \
+  -H 'content-type: application/json' \
+  -d '{"query":"query{logs(filter:{hours:1}){totalCount}}"}' | jq
+```
+**Expected Output**: Error with "Authentication required".
 
-### 3. Traffic Generation
-- **Command**: `./scripts/generate_traffic.sh`
-- **Result**: IN_PROGRESS (Running in background)
+### Auth Test (Invalid Token)
+```bash
+curl -s -X POST http://localhost:8000/graphql \
+  -H 'content-type: application/json' \
+  -H 'Authorization: Bearer invalid_token' \
+  -d '{"query":"query{logs(filter:{hours:1}){totalCount}}"}' | jq
+```
+**Expected Output**: Error with "Authentication required".
 
-### 4. UI/API Verification
-- **URL**: `https://glass-pane-845772051724.us-central1.run.app`
-- **Root (/)**: FAIL (HTTP 500)
-- **API Tail (/api/tail)**: FAIL (HTTP 500)
+## Frontend Validation
+### Smoke Test: Logs Page
+```bash
+cd frontend
+npm run test:e2e:smoke  # Assuming test script for /logs page
+```
+**Expected**: Page loads, GraphQL query to /graphql, displays logs.
 
-**Diagnosis**: The application is returning 500 Internal Server Errors. This typically indicates a runtime crash, possibly due to missing environment variables (PROJECT_ID, DATASET_ID) or permissions issues (BigQuery client init).
+### Realtime Test
+- Load /logs page.
+- Update a log in Firebase.
+- **Expected**: UI refreshes automatically via TanStack invalidation.
 
-### Next Actions
-1. Check Cloud Run logs for stack traces (requires `gcloud beta run services logs tail glass-pane` or checking Cloud Logging).
-2. Verify environment variables are set in Cloud Run revision.
-3. Verify Service Account has BigQuery Data Viewer permissions.
+### Network Calls Check
+- Open browser dev tools on /logs page.
+- **Expected**: Requests to /graphql, not to REST endpoints.
 
-## Phase N1-N7: Stabilization & Monitoring
+## Performance Validation
+### Cache Hit Ratio
+```bash
+# Check Redis keys for logs
+redis-cli keys "logs:*" | wc -l
+# Expected: >0 keys after queries
+```
 
-### 1. Summary of Actions
-- **Bug Fix**: Patched `app/glass-pane/main.py` to fix `RuntimeError: Working outside of request context` in `/api/tail`.
-- **Deployment**: Redeployed `glass-pane` with new image.
-- **Config**: Redeployed `log-processor` Cloud Function with 256Mi memory (valid for 0.083 CPU) to resolve deployment failures.
-- **Monitoring**: Created Alert Policies for Glass Pane 5xx and Log Processor Errors. Updated Dashboard.
+### Query Latency Logs
+- Run queries, check app logs for latency metrics.
+- **Expected**: <500ms for cached, <2s for uncached.
 
-### 2. Status
-- **Glass Pane API**:
-  - `/api/logs`: 200 OK
-  - `/api/facets`: 200 OK
-  - `/api/tail`: 200 OK (Verified via code fix and deployment)
-- **Log Processor**: ACTIVE (Gen2, 256Mi Memory).
-- **Dashboard**: Updated with new widgets and runbook link.
-
-### 3. IAM Audit (vertex-ai-service)
-- **Current Roles**: `roles/aiplatform.admin`, `roles/bigquery.dataEditor`, `roles/bigquery.jobUser`, `roles/logging.logWriter`, `roles/monitoring.metricWriter`, `roles/storage.objectAdmin`.
-- **Observation**: `roles/bigquery.dataEditor` and `roles/storage.objectAdmin` are project-wide and overly broad.
-- **Least-Privilege Recommendation**: Replace `dataEditor` with `roles/bigquery.dataViewer` on specific datasets (`central_logging_v1`, `org_logs`) and `roles/bigquery.jobUser` (already present). Remove `objectAdmin` if not strictly needed (or scope to specific buckets).
-- **Vertex AI Readiness**: Account has `roles/aiplatform.admin`, sufficient for future models/endpoints.
-
-### 4. Remaining Risks & Next Steps
-- **IAM**: Reduce scope of `vertex-ai-service` permissions.
-- **Vertex AI**: No endpoints/models currently exist. Future integration required.
-- **Tail Performance**: Polling interval is 5s. Consider WebSocket or smaller interval if latency is critical.
+## Commands Summary
+- Backend: `python -m pytest -q`, `uvicorn src.api.main:app --reload`, `curl` for health.
+- Frontend: `cd frontend && npm install && npm run dev`, open /logs, verify network.
+- Deployment: `gcloud run services describe glass-pane --region us-central1`, check /graphql endpoint.

@@ -24,16 +24,30 @@ This is a centralized logging and visualization platform for Google Cloud Platfo
 - **Firebase Service** (`src/services/firebase_service.py`): Firestore-based session and query persistence
 
 ### BigQuery Schema Strategy
-Logs are stored in multiple tables by resource type (e.g., `cloudaudit_googleapis_com_activity`, `run_googleapis_com_stdout`, `syslog`). The `QueryBuilder` unions these tables with a canonical schema:
-- `event_ts`: Timestamp
-- `severity`: Log severity level
-- `source_table`: Which sink table the log came from
-- `service`: Service name extracted from resource labels
-- `trace`, `spanId`: Distributed tracing identifiers
-- `json_payload_str`: Serialized JSON payload
-- `display_message`: Human-readable message text
+Logs are centralized in a unified `master_logs` table (`central_logging_v1.master_logs`) via an ETL pipeline. This table contains all logs from all GCP services in a normalized schema:
 
-**Important**: The system was designed to use a BigQuery VIEW called `view_canonical_logs` to unify tables (see ADR_0001_LOG_STORAGE.md), but the current implementation uses inline CTEs in `QueryBuilder.get_canonical_sql()` to avoid DDL requirements.
+**Key columns:**
+- `log_id`: Unique identifier (UUID)
+- `event_timestamp`: When the event occurred
+- `severity`: Log severity level (DEFAULT, DEBUG, INFO, NOTICE, WARNING, ERROR, CRITICAL, ALERT, EMERGENCY)
+- `service_name`: Extracted service name
+- `source_table`: Original sink table name
+- `stream_id`: Stream identifier (dataset.table format)
+- `message`: Normalized message content
+- `trace_id`, `span_id`: Distributed tracing identifiers
+- `http_*`: HTTP request context (method, url, status, latency_ms)
+- `json_payload`, `proto_payload`: Original payloads as JSON
+
+**Partition & Clustering:**
+- Partitioned by `log_date` (DATE)
+- Clustered by `severity`, `service_name`, `resource_type`
+
+**ETL Pipeline (`src/etl/`):**
+- Extracts logs from individual sink tables
+- Normalizes to unified schema
+- Loads into `master_logs` with deduplication
+- Tracks sync state per stream
+- Supports incremental and full ETL runs
 
 ## Development Commands
 
