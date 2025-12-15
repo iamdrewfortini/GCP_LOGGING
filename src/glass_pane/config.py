@@ -34,7 +34,7 @@ class GlassPaneConfig:
 
   # Query limits
   default_limit: int = field(default_factory=lambda: int(os.environ.get("DEFAULT_LIMIT", "100")))
-  max_limit: int = field(default_factory=lambda: int(os.environ.get("MAX_LIMIT", "1000")))
+  max_limit: int = field(default_factory=lambda: int(os.environ.get("MAX_LIMIT", "250")))
   default_time_window_hours: int = field(
     default_factory=lambda: int(os.environ.get("DEFAULT_TIME_WINDOW_HOURS", "24"))
   )
