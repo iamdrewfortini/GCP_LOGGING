@@ -19,3 +19,6 @@ tiktoken
 # Redis and Qdrant for memory architecture
 redis>=5.0.0
 qdrant-client>=1.7.0
+
+# GraphQL
+strawberry-graphql[fastapi]==0.236.0
