@@ -11,13 +11,34 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional, Sequence
 from datetime import datetime, timezone
+
+from langchain_core.runnables.config import RunnableConfig
 from langchain_core.tools import BaseTool
 from langchain_core.messages import ToolMessage
 from langgraph.prebuilt import ToolNode
+from langgraph.runtime import Runtime
+from langgraph._internal._constants import CONF, CONFIG_KEY_RUNTIME
+
 from src.agent.state import AgentState
 from src.agent.tokenization import estimate_tool_output_tokens
 
 logger = logging.getLogger(__name__)
+
+
+def _ensure_toolnode_config(config: Optional[RunnableConfig]) -> RunnableConfig:
+    """Ensure ToolNode has a Runtime available when invoked outside a graph.
+
+    LangGraph's ToolNode is a RunnableCallable whose underlying function expects a
+    `runtime` argument injected via RunnableConfig["configurable"]["__pregel_runtime"].
+
+    When unit tests (or other callers) invoke ToolNode directly without a graph,
+    that runtime is missing. We create a minimal Runtime() in that case.
+    """
+    cfg: RunnableConfig = dict(config) if config else {}
+    configurable = dict(cfg.get(CONF, {}))
+    configurable.setdefault(CONFIG_KEY_RUNTIME, Runtime())
+    cfg[CONF] = configurable
+    return cfg
 
 
 class ToolInvocationMetrics:
@@ -100,6 +121,31 @@ class ToolInvocationMetrics:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert metrics to dictionary for BigQuery."""
+        safe_result: Any = None
+
+        if isinstance(self.result, dict) and "messages" in self.result:
+            # ToolNode outputs often include ToolMessage objects which are not JSON serializable.
+            raw_messages = self.result.get("messages") or []
+            safe_messages = []
+            for m in raw_messages:
+                if isinstance(m, ToolMessage):
+                    safe_messages.append(
+                        {
+                            "type": "tool_message",
+                            "name": m.name,
+                            "tool_call_id": m.tool_call_id,
+                            "status": getattr(m, "status", None),
+                            "content": m.content,
+                        }
+                    )
+                else:
+                    safe_messages.append(m)
+            safe_result = {**self.result, "messages": safe_messages}
+        elif isinstance(self.result, (dict, list)):
+            safe_result = self.result
+        elif self.result is not None:
+            safe_result = str(self.result)
+
         return {
             "invocation_id": self.invocation_id,
             "run_id": self.run_id,
@@ -108,7 +154,7 @@ class ToolInvocationMetrics:
             "tool_name": self.tool_name,
             "tool_category": self.tool_category,
             "parameters": self.parameters,
-            "result": self.result if isinstance(self.result, (dict, list)) else str(self.result) if self.result else None,
+            "result": safe_result,
             "status": self.status,
             "error_message": self.error_message,
             "started_at": self.started_at.isoformat(),
@@ -140,7 +186,10 @@ def create_metered_tool_node(
     tool_node = ToolNode(tools)
     metrics_buffer: List[ToolInvocationMetrics] = []
 
-    def metered_tool_node_func(state: AgentState) -> Dict[str, Any]:
+    def metered_tool_node_func(
+        state: AgentState,
+        config: Optional[RunnableConfig] = None,
+    ) -> Dict[str, Any]:
         """Execute tools with metrics tracking."""
         run_id = state.get("run_id", "unknown")
         phase = state.get("phase", "unknown")
@@ -156,8 +205,11 @@ def create_metered_tool_node(
         if not hasattr(last_message, "tool_calls") or not last_message.tool_calls:
             return {}
 
+        tool_cfg = _ensure_toolnode_config(config)
+
         # Track metrics for each tool call
-        tool_call_metrics = []
+        tool_call_metrics: List[ToolInvocationMetrics] = []
+        tool_messages: List[ToolMessage] = []
 
         for tool_call in last_message.tool_calls:
             invocation_id = str(uuid.uuid4())
@@ -176,10 +228,27 @@ def create_metered_tool_node(
             )
 
             try:
-                # Execute tool via ToolNode
+                # Execute ONE tool call at a time while still providing full state.
+                call = dict(tool_call)
+                call.setdefault("id", invocation_id)
+                call["type"] = "tool_call"
+
+                tool_input = {
+                    "__type": "tool_call_with_context",
+                    "tool_call": call,
+                    "state": state,
+                }
+
                 start_time = time.time()
-                result = tool_node.invoke(state)
+                result = tool_node.invoke(tool_input, config=tool_cfg)
                 duration_ms = int((time.time() - start_time) * 1000)
+
+                # Collect ToolNode outputs (ToolMessage list) for downstream graph use.
+                if isinstance(result, dict) and "messages" in result:
+                    tool_messages.extend(result.get("messages") or [])
+                elif isinstance(result, list):
+                    # ToolNode can also return a list depending on input type
+                    tool_messages.extend(result)
 
                 # Mark as complete
                 metrics.complete(result, status="success")
@@ -209,9 +278,15 @@ def create_metered_tool_node(
         existing_tool_calls = state.get("tool_calls", [])
         new_tool_calls = [m.to_dict() for m in tool_call_metrics]
 
-        return {
+        update: Dict[str, Any] = {
             "tool_calls": existing_tool_calls + new_tool_calls,
         }
+
+        # Preserve ToolNode's standard output shape so this can be used as a drop-in.
+        if tool_messages:
+            update["messages"] = tool_messages
+
+        return update
 
     # Attach helper methods
     metered_tool_node_func.get_metrics_buffer = lambda: [m.to_dict() for m in metrics_buffer]
@@ -233,7 +308,7 @@ def _publish_metrics_batch(metrics: List[ToolInvocationMetrics]):
 
         publisher = pubsub_v1.PublisherClient()
         topic_path = publisher.topic_path(
-            config.PROJECT_ID, "tool-invocation-metrics"
+            config.PROJECT_ID_AGENT, "tool-invocation-metrics"
         )
 
         for metric in metrics:
