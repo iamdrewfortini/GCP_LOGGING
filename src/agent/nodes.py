@@ -1,5 +1,13 @@
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from src.agent.state import AgentState
+"""LangGraph nodes for the Glass Pane AI agent.
+
+This module defines the node functions for the agent workflow,
+including token budget tracking at each step.
+"""
+
+from datetime import datetime, timezone
+from typing import Dict, Any, Optional
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, BaseMessage
+from src.agent.state import AgentState, TokenBudgetState
 from src.agent.llm import get_llm
 from src.agent.tools.definitions import (
     bq_query_tool, search_logs_tool, runbook_search_tool, trace_lookup_tool,
@@ -7,9 +15,116 @@ from src.agent.tools.definitions import (
     # New enhanced tools
     analyze_logs, get_log_summary, find_related_logs, suggest_queries
 )
+from src.agent.tokenization import TokenBudgetManager, estimate_tool_output_tokens
 from langgraph.prebuilt import ToolNode
 from src.agent.persistence import persist_agent_run
 import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Global token budget manager (initialized per-request)
+# This is a module-level reference that gets updated per request
+_token_manager: Optional[TokenBudgetManager] = None
+
+
+def get_token_manager(model: str = "gpt-4", max_tokens: int = 100_000) -> TokenBudgetManager:
+    """Get or create token budget manager.
+
+    Args:
+        model: Model name for tokenizer
+        max_tokens: Maximum token budget
+
+    Returns:
+        TokenBudgetManager instance
+    """
+    global _token_manager
+    if _token_manager is None:
+        _token_manager = TokenBudgetManager(model=model, max_tokens=max_tokens)
+    return _token_manager
+
+
+def reset_token_manager() -> None:
+    """Reset the token manager for a new request."""
+    global _token_manager
+    _token_manager = None
+
+
+def update_token_budget(
+    state: AgentState,
+    manager: TokenBudgetManager,
+    phase: str,
+) -> TokenBudgetState:
+    """Update token budget state with current manager state.
+
+    Args:
+        state: Current agent state
+        manager: Token budget manager
+        phase: Current phase (diagnose, verify, optimize, etc.)
+
+    Returns:
+        Updated TokenBudgetState
+    """
+    status = manager.get_budget_status()
+    return TokenBudgetState(
+        prompt_tokens=status["tokens_used"],
+        completion_tokens=0,  # Updated during streaming
+        total_tokens=status["tokens_used"],
+        budget_max=status["max_tokens"],
+        budget_remaining=status["tokens_remaining"],
+        last_update_ts=datetime.now(timezone.utc).isoformat(),
+        model=manager.encoding.name,
+        should_summarize=manager.should_summarize(),
+    )
+
+
+def track_message_tokens(
+    manager: TokenBudgetManager,
+    messages: list[BaseMessage],
+    phase: str = "unknown",
+) -> int:
+    """Track tokens for messages and reserve from budget.
+
+    Args:
+        manager: Token budget manager
+        messages: Messages to track
+        phase: Current phase for logging
+
+    Returns:
+        Token count for the messages
+    """
+    token_count = manager.count_messages(messages)
+    try:
+        manager.reserve_tokens(token_count)
+        logger.debug(f"[{phase}] Reserved {token_count} tokens. Status: {manager.get_budget_status()}")
+    except Exception as e:
+        logger.warning(f"[{phase}] Token reservation warning: {e}")
+    return token_count
+
+
+def track_tool_tokens(
+    manager: TokenBudgetManager,
+    tool_name: str,
+    tool_input: Dict[str, Any],
+) -> int:
+    """Estimate and track tokens for tool execution.
+
+    Args:
+        manager: Token budget manager
+        tool_name: Name of the tool
+        tool_input: Tool input parameters
+
+    Returns:
+        Estimated token count
+    """
+    estimated_tokens = estimate_tool_output_tokens(tool_name, tool_input)
+    try:
+        manager.reserve_tokens(estimated_tokens)
+        logger.debug(f"[tools] Reserved {estimated_tokens} tokens for {tool_name}")
+    except Exception as e:
+        logger.warning(f"[tools] Token reservation warning for {tool_name}: {e}")
+    return estimated_tokens
+
 
 # Include all tools - prioritize smart tools
 tools = [
@@ -72,6 +187,10 @@ Always structure your responses clearly:
 Remember: Users want answers, not questions. Take action first, ask later only if truly needed."""
 
 def diagnose_node(state: AgentState):
+    """Diagnose node - understand and gather evidence.
+
+    Tracks tokens for input messages and LLM response.
+    """
     messages = state['messages']
     sys_msg = SystemMessage(content=SMART_AGENT_PROMPT + """
 
@@ -82,14 +201,26 @@ Goal: Understand the request and gather evidence immediately.
 - Present findings clearly with markdown formatting
 """)
 
+    # Track input tokens
+    manager = get_token_manager()
+    track_message_tokens(manager, [sys_msg] + messages, "diagnose")
+
     res = llm.invoke([sys_msg] + messages)
+
+    # Track output tokens
+    track_message_tokens(manager, [res], "diagnose")
 
     return {
         "messages": [res],
-        "phase": "diagnose"
+        "phase": "diagnose",
+        "token_budget": update_token_budget(state, manager, "diagnose"),
     }
 
 def verify_node(state: AgentState):
+    """Verify node - confirm findings and dig deeper.
+
+    Tracks tokens for input messages and LLM response.
+    """
     messages = state['messages']
     sys_msg = SystemMessage(content=SMART_AGENT_PROMPT + """
 
@@ -100,14 +231,26 @@ Goal: Confirm findings and dig deeper if needed.
 - Verify patterns identified in diagnosis
 """)
 
+    # Track input tokens
+    manager = get_token_manager()
+    track_message_tokens(manager, [sys_msg] + messages, "verify")
+
     res = llm.invoke([sys_msg] + messages)
+
+    # Track output tokens
+    track_message_tokens(manager, [res], "verify")
 
     return {
         "messages": [res],
-        "phase": "verify"
+        "phase": "verify",
+        "token_budget": update_token_budget(state, manager, "verify"),
     }
 
 def optimize_node(state: AgentState):
+    """Optimize node - provide recommendations and final report.
+
+    Tracks tokens for input messages and LLM response.
+    """
     messages = state['messages']
     sys_msg = SystemMessage(content=SMART_AGENT_PROMPT + """
 
@@ -119,28 +262,55 @@ Goal: Provide actionable recommendations and final report.
 - Offer follow-up actions
 """)
 
+    # Track input tokens
+    manager = get_token_manager()
+    track_message_tokens(manager, [sys_msg] + messages, "optimize")
+
     res = llm.invoke([sys_msg] + messages)
+
+    # Track output tokens
+    track_message_tokens(manager, [res], "optimize")
 
     return {
         "messages": [res],
-        "phase": "optimize"
+        "phase": "optimize",
+        "token_budget": update_token_budget(state, manager, "optimize"),
     }
 
 def persist_node(state: AgentState):
-    """
-    Persists the run to BigQuery.
+    """Persist node - save run to BigQuery with token stats.
+
+    Includes final token budget information in persistence.
     """
     run_id = state.get("run_id")
+    manager = get_token_manager()
+
+    # Get final token budget status
+    final_budget = update_token_budget(state, manager, "persist")
+
     if run_id:
         # Extract evidence from messages (simplification)
         # Ideally we'd parse tool outputs
         persist_agent_run(
             run_id=run_id,
             user_query=state.get("user_query", ""),
-            status="completed", # or state.get("status")
+            status="completed",
             scope=state.get("scope", {}),
-            evidence=state.get("evidence", [])
+            evidence=state.get("evidence", []),
+            token_usage={
+                "prompt_tokens": final_budget.get("prompt_tokens", 0),
+                "completion_tokens": final_budget.get("completion_tokens", 0),
+                "total_tokens": final_budget.get("total_tokens", 0),
+            }
         )
-    return state
+
+    # Reset token manager for next request
+    reset_token_manager()
+
+    return {
+        **state,
+        "token_budget": final_budget,
+        "status": "completed",
+    }
 
 tool_node = ToolNode(tools)
