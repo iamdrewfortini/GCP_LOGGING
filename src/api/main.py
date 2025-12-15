@@ -417,13 +417,13 @@ def get_session(
             )
         
         # Enforce ownership
-        if session.get("userId") != current_user_uid and current_user_uid != "anonymous":
+        if session.get("user_id") != current_user_uid and current_user_uid != "anonymous":
             return JSONResponse(
                  {"status": "error", "message": "Access denied"},
                  status_code=403,
             )
 
-        messages = firebase_service.get_messages(session_id)
+        messages = firebase_service.get_session_messages(session_id)
         return JSONResponse(
             {"status": "success", "session": session, "messages": messages}
         )
@@ -449,7 +449,7 @@ def archive_session(
                 status_code=404,
             )
         
-        if session.get("userId") != current_user_uid and current_user_uid != "anonymous":
+        if session.get("user_id") != current_user_uid and current_user_uid != "anonymous":
              return JSONResponse(
                  {"status": "error", "message": "Access denied"},
                  status_code=403,
@@ -573,7 +573,7 @@ async def chat(
                 {"status": "error", "message": "Session not found"},
                 status_code=404,
             )
-        if session.get("userId") != current_user_uid and current_user_uid != "anonymous":
+        if session.get("user_id") != current_user_uid and current_user_uid != "anonymous":
              return JSONResponse(
                  {"status": "error", "message": "Access denied"},
                  status_code=403,
