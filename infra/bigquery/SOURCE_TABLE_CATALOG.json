@@ -1,0 +1,167 @@
+{
+  "version": "1.0.0",
+  "generated": "2025-12-14",
+  "project_id": "diatonic-ai-gcp",
+  "canonical_view": "org_observability.logs_canonical_v2",
+  "legacy_view": "central_logging_v1.view_canonical_logs",
+  "datasets": {
+    "central_logging_v1": {
+      "location": "US",
+      "type": "sink_destination",
+      "tables": [
+        {
+          "table_id": "cloudaudit_googleapis_com_activity",
+          "canonical_mapped": true,
+          "partitioned_by": "timestamp",
+          "payload_type": "proto",
+          "payload_field": "protoPayload",
+          "has_native_insert_id": true,
+          "has_native_log_name": true,
+          "service_name_path": "resource.labels.service_name"
+        },
+        {
+          "table_id": "cloudaudit_googleapis_com_data_access",
+          "canonical_mapped": true,
+          "partitioned_by": "timestamp",
+          "payload_type": "proto",
+          "payload_field": "protopayload_auditlog",
+          "has_native_insert_id": true,
+          "has_native_log_name": true,
+          "service_name_path": "protopayload_auditlog.serviceName"
+        },
+        {
+          "table_id": "cloudaudit_googleapis_com_system_event",
+          "canonical_mapped": true,
+          "partitioned_by": "timestamp",
+          "payload_type": "proto",
+          "payload_field": "protopayload_auditlog",
+          "has_native_insert_id": true,
+          "has_native_log_name": true,
+          "service_name_path": "protopayload_auditlog.serviceName"
+        },
+        {
+          "table_id": "run_googleapis_com_stdout",
+          "canonical_mapped": true,
+          "partitioned_by": "timestamp",
+          "payload_type": "json",
+          "payload_field": "jsonPayload",
+          "has_native_insert_id": false,
+          "has_native_log_name": false,
+          "service_name_path": "resource.labels.service_name"
+        },
+        {
+          "table_id": "run_googleapis_com_stderr",
+          "canonical_mapped": true,
+          "partitioned_by": "timestamp",
+          "payload_type": "json",
+          "payload_field": "jsonPayload",
+          "has_native_insert_id": false,
+          "has_native_log_name": false,
+          "service_name_path": "resource.labels.service_name"
+        },
+        {
+          "table_id": "run_googleapis_com_requests",
+          "canonical_mapped": true,
+          "partitioned_by": "timestamp",
+          "payload_type": "http",
+          "payload_field": "httpRequest",
+          "has_native_insert_id": true,
+          "has_native_log_name": true,
+          "service_name_path": "resource.labels.service_name"
+        },
+        {
+          "table_id": "run_googleapis_com_varlog_system",
+          "canonical_mapped": true,
+          "partitioned_by": "timestamp",
+          "payload_type": "text",
+          "payload_field": "textPayload",
+          "has_native_insert_id": false,
+          "has_native_log_name": false,
+          "service_name_path": "resource.labels.service_name"
+        },
+        {
+          "table_id": "syslog",
+          "canonical_mapped": true,
+          "partitioned_by": "timestamp",
+          "payload_type": "json",
+          "payload_field": "jsonPayload",
+          "has_native_insert_id": false,
+          "has_native_log_name": false,
+          "service_name_path": null,
+          "service_name_default": "compute"
+        },
+        {
+          "table_id": "cloudbuild",
+          "canonical_mapped": true,
+          "partitioned_by": "timestamp",
+          "payload_type": "text",
+          "payload_field": "textPayload",
+          "has_native_insert_id": true,
+          "has_native_log_name": true,
+          "service_name_path": null,
+          "service_name_default": "cloudbuild"
+        },
+        {
+          "table_id": "clouderrorreporting_googleapis_com_insights",
+          "canonical_mapped": true,
+          "partitioned_by": "timestamp",
+          "payload_type": "custom",
+          "payload_field": "jsonpayload_v1beta1_insight",
+          "has_native_insert_id": true,
+          "has_native_log_name": true,
+          "service_name_path": "resource.labels.project_id"
+        },
+        {
+          "table_id": "cloudscheduler_googleapis_com_executions",
+          "canonical_mapped": true,
+          "partitioned_by": "timestamp",
+          "payload_type": "custom",
+          "payload_field": "jsonpayload_logging_attemptstarted",
+          "alternate_payload_field": "jsonpayload_logging_attemptfinished",
+          "has_native_insert_id": true,
+          "has_native_log_name": true,
+          "service_name_path": "resource.labels.job_id"
+        },
+        {
+          "table_id": "glass_pane_test",
+          "canonical_mapped": false,
+          "partitioned_by": "timestamp",
+          "payload_type": "unknown",
+          "notes": "Test table - evaluate if needed"
+        }
+      ]
+    },
+    "org_observability": {
+      "location": "US",
+      "type": "canonical_views",
+      "views": [
+        {
+          "view_id": "logs_canonical_v2",
+          "version": "2.0.0",
+          "source_tables": 11,
+          "fields": 18
+        }
+      ]
+    }
+  },
+  "log_analytics_linked_datasets": {
+    "note": "These datasets contain ephemeral query cache tables, NOT raw log data",
+    "datasets": [
+      {
+        "dataset_id": "_1f6e581e1c8cdfee0ea501083a6509e8201c9423",
+        "linked_bucket": "_Default",
+        "queryable_as_logs": false
+      },
+      {
+        "dataset_id": "_a3d514c3dcba802a157fa22a2742f288c8e4133c",
+        "linked_bucket": "_Required",
+        "queryable_as_logs": false
+      },
+      {
+        "dataset_id": "_bb367ebfb354adc186272bc63bcdb86d98c29ab9",
+        "linked_bucket": "dacvisuals-org-logs",
+        "queryable_as_logs": false
+      }
+    ]
+  }
+}
