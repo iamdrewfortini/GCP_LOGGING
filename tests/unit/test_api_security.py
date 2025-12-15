@@ -56,8 +56,8 @@ def test_cross_user_access_denied():
     from src.api.main import firebase_service
     
     # Mock session belonging to victim
-    firebase_service.get_session = MagicMock(return_value={"userId": "victim-user", "id": "sess-victim"})
-    
+    firebase_service.get_session = MagicMock(return_value={"user_id": "victim-user", "id": "sess-victim"})
+
     response = client.get("/api/sessions/sess-victim")
     assert response.status_code == 403
     
@@ -70,8 +70,8 @@ def test_own_session_access_allowed():
     from unittest.mock import MagicMock
     from src.api.main import firebase_service
     
-    firebase_service.get_session = MagicMock(return_value={"userId": "victim-user", "id": "sess-victim"})
-    firebase_service.get_messages = MagicMock(return_value=[])
+    firebase_service.get_session = MagicMock(return_value={"user_id": "victim-user", "id": "sess-victim"})
+    firebase_service.get_session_messages = MagicMock(return_value=[])
     
     response = client.get("/api/sessions/sess-victim")
     assert response.status_code == 200
