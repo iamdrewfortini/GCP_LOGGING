@@ -34,7 +34,7 @@ const costData = [
   { service: "Cloud Logging", cost: 34.89, change: 15, budget: 50 },
 ]
 
-function CostsPage() {
+export function CostsPage() {
   const totalCost = costData.reduce((sum, item) => sum + item.cost, 0)
   const totalBudget = costData.reduce((sum, item) => sum + item.budget, 0)
   const percentUsed = (totalCost / totalBudget) * 100

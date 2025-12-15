@@ -146,13 +146,21 @@ test.describe('Cost Analytics Page', () => {
   test('over budget services are highlighted', async ({ page }) => {
     // Look for "Over Budget" badge
     const overBudgetBadge = page.locator('span:has-text("Over Budget")');
-    // May or may not be present depending on data
+    const count = await overBudgetBadge.count();
+
+    if (count > 0) {
+      await expect(overBudgetBadge.first()).toBeVisible();
+    }
   });
 
   test('warning state services are highlighted', async ({ page }) => {
     // Look for "Warning" badge
     const warningBadge = page.locator('span:has-text("Warning")');
-    // May or may not be present depending on data
+    const count = await warningBadge.count();
+
+    if (count > 0) {
+      await expect(warningBadge.first()).toBeVisible();
+    }
   });
 
   test('on track services are shown', async ({ page }) => {

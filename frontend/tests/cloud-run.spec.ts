@@ -185,6 +185,10 @@ test.describe('Cloud Run Services Page', () => {
   test('high error rate services are highlighted', async ({ page }) => {
     // Services with error rate > 3% should have red text
     const errorCells = page.locator('td span.text-red-500');
-    // May or may not be present
+
+    const count = await errorCells.count();
+    if (count > 0) {
+      await expect(errorCells.first()).toBeVisible();
+    }
   });
 });

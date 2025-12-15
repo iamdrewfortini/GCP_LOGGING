@@ -28,7 +28,7 @@ export const Route = createRoute({
   component: DashboardPage,
 })
 
-function DashboardPage() {
+export function DashboardPage() {
   const { data: severityStats, isLoading: severityLoading, refetch: refetchSeverity } = useSeverityStats(24)
   const { data: serviceStats, isLoading: serviceLoading, refetch: refetchServices } = useServiceStats(24)
 

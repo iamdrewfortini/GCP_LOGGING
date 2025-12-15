@@ -74,7 +74,7 @@ const services = [
   },
 ]
 
-function CloudRunPage() {
+export function CloudRunPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "READY": return "bg-green-100 text-green-800"

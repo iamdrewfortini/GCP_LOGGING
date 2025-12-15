@@ -62,6 +62,7 @@ test.describe('Accessibility & SEO Tests', () => {
         const alt = await img.getAttribute('alt');
         // All images should have alt attribute
         // Note: decorative images can have alt=""
+        expect(alt).not.toBeNull();
       }
     });
 
@@ -153,6 +154,7 @@ test.describe('Accessibility & SEO Tests', () => {
                           await dialog.getAttribute('aria-label');
           // Just verify dialog opens
           expect(await dialog.isVisible()).toBeTruthy();
+          expect(hasLabel).toBeTruthy();
         }
       }
     });

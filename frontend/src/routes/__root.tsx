@@ -8,7 +8,7 @@ export const Route = createRootRoute({
   component: RootLayout,
 })
 
-function RootLayout() {
+export function RootLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />

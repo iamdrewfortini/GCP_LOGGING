@@ -80,16 +80,7 @@ function ScanLines() {
 
 export function LoginScreen() {
   const { signInWithGoogle, loading, error } = useAuth()
-  const [showError, setShowError] = useState(false)
   const [hovered, setHovered] = useState(false)
-
-  useEffect(() => {
-    if (error) {
-      setShowError(true)
-      const timer = setTimeout(() => setShowError(false), 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [error])
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden flex items-center justify-center">
@@ -160,7 +151,7 @@ export function LoginScreen() {
         </button>
 
         {/* Error message */}
-        {showError && error && (
+        {error && (
           <div className="font-mono text-xs text-red-400/60 tracking-wider animate-pulse">
             ERR: {error.toUpperCase()}
           </div>

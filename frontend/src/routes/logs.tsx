@@ -70,7 +70,7 @@ const severityOptions: LogSeverity[] = [
   "EMERGENCY",
 ]
 
-function LogsPage() {
+export function LogsPage() {
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [severity, setSeverity] = useState<string>("all")

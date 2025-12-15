@@ -32,24 +32,18 @@ const emulatorConfig = {
   storagePort: parseInt(import.meta.env.VITE_FIREBASE_STORAGE_EMULATOR_PORT || "9199"),
 }
 
-// Initialize Firebase app (singleton)
-let app: FirebaseApp
-let auth: Auth
-let db: Firestore
-let storage: FirebaseStorage
 let emulatorsConnected = false
 
 function initializeFirebase(): FirebaseApp {
   if (getApps().length === 0) {
-    app = initializeApp(firebaseConfig)
+    const app = initializeApp(firebaseConfig)
     console.log("🔥 Firebase initialized with project:", firebaseConfig.projectId)
-  } else {
-    app = getApps()[0]
+    return app
   }
-  return app
+  return getApps()[0]
 }
 
-function connectEmulators(): void {
+function connectEmulators(auth: Auth, db: Firestore, storage: FirebaseStorage): void {
   if (emulatorsConnected || !emulatorConfig.useEmulators) {
     return
   }
@@ -86,20 +80,17 @@ function connectEmulators(): void {
 }
 
 // Initialize on module load
-app = initializeFirebase()
-auth = getAuth(app)
-db = getFirestore(app)
-storage = getStorage(app)
+export const app = initializeFirebase()
+export const auth = getAuth(app)
+export const db = getFirestore(app)
+export const storage = getStorage(app)
 
 // Connect to emulators if configured
 if (emulatorConfig.useEmulators) {
-  connectEmulators()
+  connectEmulators(auth, db, storage)
 } else {
   console.log("🔥 Using production Firebase services")
 }
-
-// Export initialized instances
-export { app, auth, db, storage }
 
 // Export config for debugging
 export const isUsingEmulators = emulatorConfig.useEmulators

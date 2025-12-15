@@ -82,7 +82,6 @@ interface EnhancedChatProps {
 
 export function EnhancedChat({ showSidebar = true }: EnhancedChatProps) {
   const [input, setInput] = useState("")
-  const [showSuggestions, setShowSuggestions] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -110,12 +109,6 @@ export function EnhancedChat({ showSidebar = true }: EnhancedChatProps) {
     inputRef.current?.focus()
   }, [])
 
-  // Hide suggestions after first message
-  useEffect(() => {
-    if (messages.length > 0) {
-      setShowSuggestions(false)
-    }
-  }, [messages.length])
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault()
@@ -137,7 +130,7 @@ export function EnhancedChat({ showSidebar = true }: EnhancedChatProps) {
 
   const handleNewChat = () => {
     clearMessages()
-    setShowSuggestions(true)
+    setInput("")
   }
 
   return (
@@ -264,7 +257,7 @@ export function EnhancedChat({ showSidebar = true }: EnhancedChatProps) {
         </ScrollArea>
 
         {/* Quick suggestions when typing */}
-        {showSuggestions && input.length === 0 && messages.length > 0 && (
+        {!isStreaming && input.length === 0 && messages.length > 0 && (
           <div className="px-4 pb-2">
             <div className="flex flex-wrap gap-2">
               {SMART_SUGGESTIONS.slice(0, 4).map((suggestion) => (

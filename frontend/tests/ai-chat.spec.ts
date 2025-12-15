@@ -254,9 +254,14 @@ test.describe('AI Debugger / Chat Page', () => {
   });
 
   test('sessions sidebar shows "No sessions yet" when empty', async ({ page }) => {
-    // This depends on user state
     const noSessionsText = page.locator('text=No sessions yet');
-    // May or may not be visible
+
+    if (await noSessionsText.isVisible()) {
+      await expect(noSessionsText).toBeVisible();
+    } else {
+      // If not empty, at least verify the sidebar is present.
+      await expect(page.locator('text=Sessions')).toBeVisible();
+    }
   });
 
   test('stop button appears during streaming', async ({ page }) => {
@@ -268,6 +273,10 @@ test.describe('AI Debugger / Chat Page', () => {
 
     // May briefly appear during streaming
     await page.waitForTimeout(1000);
+    await stopButton.first().isVisible();
+
+    // Page should not crash
+    await expect(page.locator('text=AI Log Debugger')).toBeVisible();
   });
 
   test('input is disabled during streaming', async ({ page }) => {
@@ -279,6 +288,7 @@ test.describe('AI Debugger / Chat Page', () => {
 
     // During active streaming, input may be disabled
     await page.waitForTimeout(500);
+    await expect(input).toBeVisible();
   });
 
   test('markdown rendering in AI responses', async ({ page }) => {

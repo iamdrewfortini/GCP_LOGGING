@@ -54,6 +54,25 @@ githubProvider.addScope("user:email")
 microsoftProvider.addScope("email")
 microsoftProvider.addScope("profile")
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null
+}
+
+function getErrorInfo(error: unknown): { code?: string; message?: string } {
+  if (typeof error === "string") {
+    return { message: error }
+  }
+
+  const rec = asRecord(error)
+  const code = rec && typeof rec.code === "string" ? rec.code : undefined
+  const message =
+    (rec && typeof rec.message === "string" ? rec.message : undefined) ??
+    (error instanceof Error ? error.message : undefined) ??
+    (error ? String(error) : undefined)
+
+  return { code, message }
+}
+
 /**
  * Sign in with Google OAuth using popup.
  */
@@ -62,8 +81,9 @@ export async function signInWithGoogle(): Promise<UserCredential> {
     const result = await signInWithPopup(auth, googleProvider)
     console.log("Google sign-in successful:", result.user.email)
     return result
-  } catch (error: any) {
-    console.error("Google sign-in error:", error.code, error.message)
+  } catch (error: unknown) {
+    const { code, message } = getErrorInfo(error)
+    console.error("Google sign-in error:", code, message)
     throw error
   }
 }
@@ -83,8 +103,9 @@ export async function signInWithGitHub(): Promise<UserCredential> {
     const result = await signInWithPopup(auth, githubProvider)
     console.log("GitHub sign-in successful:", result.user.email)
     return result
-  } catch (error: any) {
-    console.error("GitHub sign-in error:", error.code, error.message)
+  } catch (error: unknown) {
+    const { code, message } = getErrorInfo(error)
+    console.error("GitHub sign-in error:", code, message)
     throw error
   }
 }
@@ -97,8 +118,9 @@ export async function signInWithMicrosoft(): Promise<UserCredential> {
     const result = await signInWithPopup(auth, microsoftProvider)
     console.log("Microsoft sign-in successful:", result.user.email)
     return result
-  } catch (error: any) {
-    console.error("Microsoft sign-in error:", error.code, error.message)
+  } catch (error: unknown) {
+    const { code, message } = getErrorInfo(error)
+    console.error("Microsoft sign-in error:", code, message)
     throw error
   }
 }
@@ -114,8 +136,9 @@ export async function signInWithEmail(
     const result = await signInWithEmailAndPassword(auth, email, password)
     console.log("Email sign-in successful:", result.user.email)
     return result
-  } catch (error: any) {
-    console.error("Email sign-in error:", error.code, error.message)
+  } catch (error: unknown) {
+    const { code, message } = getErrorInfo(error)
+    console.error("Email sign-in error:", code, message)
     throw error
   }
 }
@@ -131,8 +154,9 @@ export async function signUpWithEmail(
     const result = await createUserWithEmailAndPassword(auth, email, password)
     console.log("Account created:", result.user.email)
     return result
-  } catch (error: any) {
-    console.error("Sign-up error:", error.code, error.message)
+  } catch (error: unknown) {
+    const { code, message } = getErrorInfo(error)
+    console.error("Sign-up error:", code, message)
     throw error
   }
 }
@@ -145,8 +169,9 @@ export async function signInAsGuest(): Promise<UserCredential> {
     const result = await signInAnonymously(auth)
     console.log("Anonymous sign-in successful:", result.user.uid)
     return result
-  } catch (error: any) {
-    console.error("Anonymous sign-in error:", error.code, error.message)
+  } catch (error: unknown) {
+    const { code, message } = getErrorInfo(error)
+    console.error("Anonymous sign-in error:", code, message)
     throw error
   }
 }
@@ -158,8 +183,9 @@ export async function logout(): Promise<void> {
   try {
     await signOut(auth)
     console.log("Signed out successfully")
-  } catch (error: any) {
-    console.error("Sign-out error:", error.code, error.message)
+  } catch (error: unknown) {
+    const { code, message } = getErrorInfo(error)
+    console.error("Sign-out error:", code, message)
     throw error
   }
 }
@@ -231,8 +257,9 @@ export async function sendVerificationCode(
     phoneConfirmationResult = confirmationResult
     console.log("SMS verification code sent to:", phoneNumber)
     return confirmationResult
-  } catch (error: any) {
-    console.error("Phone verification error:", error.code, error.message)
+  } catch (error: unknown) {
+    const { code, message } = getErrorInfo(error)
+    console.error("Phone verification error:", code, message)
     throw error
   }
 }
@@ -252,8 +279,9 @@ export async function verifyPhoneCode(code: string): Promise<UserCredential> {
     console.log("Phone sign-in successful:", result.user.phoneNumber)
     phoneConfirmationResult = null
     return result
-  } catch (error: any) {
-    console.error("Code verification error:", error.code, error.message)
+  } catch (error: unknown) {
+    const { code, message } = getErrorInfo(error)
+    console.error("Code verification error:", code, message)
     throw error
   }
 }
@@ -273,8 +301,9 @@ export async function signInWithPhoneCredential(
     const result = await signInWithCredential(auth, credential)
     console.log("Phone credential sign-in successful:", result.user.phoneNumber)
     return result
-  } catch (error: any) {
-    console.error("Phone credential error:", error.code, error.message)
+  } catch (error: unknown) {
+    const { code, message } = getErrorInfo(error)
+    console.error("Phone credential error:", code, message)
     throw error
   }
 }
@@ -322,7 +351,10 @@ export const AUTH_ERROR_MESSAGES: Record<string, string> = {
 /**
  * Get a user-friendly error message.
  */
-export function getAuthErrorMessage(error: any): string {
-  const code = error?.code || ""
-  return AUTH_ERROR_MESSAGES[code] || error?.message || "An error occurred."
+export function getAuthErrorMessage(error: unknown): string {
+  const { code, message } = getErrorInfo(error)
+  if (code && AUTH_ERROR_MESSAGES[code]) {
+    return AUTH_ERROR_MESSAGES[code]
+  }
+  return message || "An error occurred."
 }

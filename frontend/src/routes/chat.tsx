@@ -8,6 +8,6 @@ export const Route = createRoute({
   component: ChatPage,
 })
 
-function ChatPage() {
+export function ChatPage() {
   return <EnhancedChat showSidebar={true} />
 }
