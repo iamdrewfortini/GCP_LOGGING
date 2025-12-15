@@ -1,0 +1,62 @@
+# Dashboard Get Widget Config Tool Specification
+# Phase 4: MCP Tool Generator
+
+tool_id: dashboard_get_widget_config
+name: dashboard_get_widget_config
+version: "1.0.0"
+description: "Get configuration for a dashboard widget"
+
+# Input schema
+inputs:
+  type: object
+  properties:
+    widget_id:
+      type: string
+      description: "Widget identifier"
+  required: [widget_id]
+
+# Output schema
+outputs:
+  type: object
+  properties:
+    widget_id:
+      type: string
+      description: "Widget identifier"
+    config:
+      type: object
+      description: "Widget configuration"
+
+# Safety policies
+safety:
+  deny_keywords: []
+  allow_keywords: []
+  allowed_widget_ids:
+    - "*"  # All widgets readable
+  timeout_seconds: 10
+
+# Permissions
+permissions:
+  - "dashboard.widgets.get"
+
+# Audit logging
+audit:
+  log_input: true
+  log_output: false  # Don't log widget configs (may contain sensitive data)
+  redact_fields: []
+  log_destination: "chat_analytics.tool_invocations"
+
+# Examples
+examples:
+  - name: "Get widget config"
+    input:
+      widget_id: "error-rate-chart"
+    expected_output:
+      widget_id: "error-rate-chart"
+      config: {}
+
+# Metadata
+metadata:
+  author: "system"
+  created_at: "2024-12-15T00:00:00Z"
+  tags: ["dashboard", "read-only", "config"]
+  cost_estimate_usd: 0.00001

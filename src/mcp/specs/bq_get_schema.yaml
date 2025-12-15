@@ -1,0 +1,83 @@
+# BigQuery Get Table Schema Tool Specification
+# Phase 4: MCP Tool Generator
+
+tool_id: bq_get_schema
+name: bq_get_schema
+version: "1.0.0"
+description: "Get schema information for a BigQuery table"
+
+# Input schema
+inputs:
+  type: object
+  properties:
+    table_id:
+      type: string
+      description: "Fully qualified table ID (project.dataset.table)"
+  required: [table_id]
+
+# Output schema
+outputs:
+  type: object
+  properties:
+    table_id:
+      type: string
+      description: "Table identifier"
+    schema:
+      type: array
+      description: "Table schema fields"
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+          type:
+            type: string
+          mode:
+            type: string
+          description:
+            type: string
+    num_rows:
+      type: integer
+      description: "Number of rows in table"
+    num_bytes:
+      type: integer
+      description: "Size of table in bytes"
+
+# Safety policies
+safety:
+  deny_keywords: []
+  allow_keywords: []
+  allowed_datasets:
+    - "central_logging_v1"
+    - "chat_analytics"
+    - "org_agent"
+  timeout_seconds: 30
+
+# Permissions
+permissions:
+  - "bigquery.tables.get"
+
+# Audit logging
+audit:
+  log_input: true
+  log_output: true
+  redact_fields: []
+  log_destination: "chat_analytics.tool_invocations"
+
+# Examples
+examples:
+  - name: "Get schema for logs table"
+    input:
+      table_id: "diatonic-ai-gcp.central_logging_v1.view_canonical_logs"
+    expected_output:
+      table_id: "view_canonical_logs"
+      schema: []
+      num_rows: 0
+      num_bytes: 0
+
+# Metadata
+metadata:
+  author: "system"
+  created_at: "2024-12-15T00:00:00Z"
+  tags: ["bigquery", "metadata", "schema"]
+  cost_estimate_usd: 0.00001

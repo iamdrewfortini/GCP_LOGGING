@@ -1,0 +1,69 @@
+# BigQuery List Datasets Tool Specification
+# Phase 4: MCP Tool Generator
+
+tool_id: bq_list_datasets
+name: bq_list_datasets
+version: "1.0.0"
+description: "List all BigQuery datasets in a project"
+
+# Input schema
+inputs:
+  type: object
+  properties:
+    project_id:
+      type: string
+      description: "GCP project ID"
+      default: "diatonic-ai-gcp"
+  required: []
+
+# Output schema
+outputs:
+  type: object
+  properties:
+    datasets:
+      type: array
+      description: "List of datasets"
+      items:
+        type: object
+        properties:
+          dataset_id:
+            type: string
+          project:
+            type: string
+          full_id:
+            type: string
+
+# Safety policies
+safety:
+  deny_keywords: []
+  allow_keywords: []
+  allowed_projects:
+    - "diatonic-ai-gcp"
+  max_results: 100
+  timeout_seconds: 30
+
+# Permissions
+permissions:
+  - "bigquery.datasets.get"
+
+# Audit logging
+audit:
+  log_input: true
+  log_output: true
+  redact_fields: []
+  log_destination: "chat_analytics.tool_invocations"
+
+# Examples
+examples:
+  - name: "List datasets in default project"
+    input:
+      project_id: "diatonic-ai-gcp"
+    expected_output:
+      datasets: []
+
+# Metadata
+metadata:
+  author: "system"
+  created_at: "2024-12-15T00:00:00Z"
+  tags: ["bigquery", "metadata", "read-only"]
+  cost_estimate_usd: 0.00001

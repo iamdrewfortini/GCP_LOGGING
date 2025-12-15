@@ -1,0 +1,126 @@
+# BigQuery Read-Only Query Tool Specification
+# Phase 4: MCP Tool Generator
+
+tool_id: bq_query_readonly
+name: bq_query_readonly
+version: "1.0.0"
+description: "Execute read-only BigQuery queries with safety guardrails"
+
+# Input schema (JSON Schema)
+inputs:
+  type: object
+  properties:
+    sql:
+      type: string
+      description: "SQL query to execute"
+      maxLength: 10000
+    params:
+      type: object
+      description: "Query parameters"
+      additionalProperties: true
+    dry_run:
+      type: boolean
+      description: "Run dry-run first"
+      default: true
+    max_bytes_billed:
+      type: integer
+      description: "Maximum bytes to bill"
+      default: 50000000000  # 50GB
+  required: [sql]
+
+# Output schema
+outputs:
+  type: object
+  properties:
+    job_id:
+      type: string
+      description: "BigQuery job ID"
+    rows:
+      type: array
+      description: "Query results"
+      items:
+        type: object
+    bytes_processed:
+      type: integer
+      description: "Bytes processed by query"
+    cache_hit:
+      type: boolean
+      description: "Whether query hit cache"
+    truncated:
+      type: boolean
+      description: "Whether results were truncated"
+
+# Safety policies
+safety:
+  # SQL keyword denylist
+  deny_keywords:
+    - "DROP"
+    - "DELETE"
+    - "UPDATE"
+    - "INSERT"
+    - "TRUNCATE"
+    - "ALTER"
+    - "CREATE"
+    - "GRANT"
+    - "REVOKE"
+  
+  # SQL keyword allowlist
+  allow_keywords:
+    - "SELECT"
+    - "WITH"
+    - "FROM"
+    - "WHERE"
+    - "GROUP BY"
+    - "ORDER BY"
+    - "LIMIT"
+  
+  # Dataset/table restrictions
+  allowed_datasets:
+    - "central_logging_v1"
+    - "chat_analytics"
+    - "org_agent"
+  
+  # Row limits
+  max_rows_returned: 1000
+  
+  # Require partition filters
+  require_partition_filter: true
+  
+  # Timeout
+  timeout_seconds: 60
+
+# Permissions (IAM-style)
+permissions:
+  - "bigquery.jobs.create"
+  - "bigquery.tables.getData"
+
+# Logging requirements
+audit:
+  log_input: true
+  log_output: true
+  redact_fields: ["email", "ip_address", "user_id"]
+  log_destination: "chat_analytics.tool_invocations"
+
+# Examples (for testing and documentation)
+examples:
+  - name: "Query recent errors"
+    input:
+      sql: |
+        SELECT event_ts, severity, service, display_message
+        FROM `diatonic-ai-gcp.central_logging_v1.view_canonical_logs`
+        WHERE DATE(event_ts) = CURRENT_DATE()
+          AND severity = 'ERROR'
+        LIMIT 10
+      dry_run: true
+    expected_output:
+      job_id: "job_123"
+      rows: []
+      bytes_processed: 1024
+      cache_hit: false
+
+# Metadata
+metadata:
+  author: "system"
+  created_at: "2024-12-15T00:00:00Z"
+  tags: ["bigquery", "read-only", "safe"]
+  cost_estimate_usd: 0.0001  # Per invocation
