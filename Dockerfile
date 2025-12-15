@@ -24,7 +24,7 @@ ENV VITE_FIREBASE_APP_ID=$VITE_FIREBASE_APP_ID
 ENV VITE_USE_FIREBASE_EMULATORS=$VITE_USE_FIREBASE_EMULATORS
 
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY frontend/ ./
 RUN npm run build
