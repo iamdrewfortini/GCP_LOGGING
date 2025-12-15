@@ -3,11 +3,36 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from typing import Any, Optional
 
 import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
+
+
+def _serialize_firestore_doc(doc: dict[str, Any]) -> dict[str, Any]:
+    """Convert Firestore document to JSON-serializable dict.
+
+    Converts Firestore timestamp objects to ISO strings.
+    """
+    result = {}
+    for key, value in doc.items():
+        if hasattr(value, "isoformat"):
+            # Handle datetime and DatetimeWithNanoseconds
+            result[key] = value.isoformat()
+        elif isinstance(value, dict):
+            result[key] = _serialize_firestore_doc(value)
+        elif isinstance(value, list):
+            result[key] = [
+                _serialize_firestore_doc(v) if isinstance(v, dict)
+                else v.isoformat() if hasattr(v, "isoformat")
+                else v
+                for v in value
+            ]
+        else:
+            result[key] = value
+    return result
 
 
 class FirebaseService:
@@ -104,7 +129,7 @@ class FirebaseService:
 
         doc = self.db.collection("sessions").document(session_id).get()
         if doc.exists:
-            return doc.to_dict() | {"id": doc.id}
+            return _serialize_firestore_doc(doc.to_dict()) | {"id": doc.id}
         return None
 
     def list_sessions(
@@ -134,7 +159,7 @@ class FirebaseService:
             .limit(limit)
         )
 
-        return [doc.to_dict() | {"id": doc.id} for doc in query.stream()]
+        return [_serialize_firestore_doc(doc.to_dict()) | {"id": doc.id} for doc in query.stream()]
 
     def update_session(
         self,
@@ -243,7 +268,7 @@ class FirebaseService:
             .limit(limit)
         )
 
-        return [doc.to_dict() | {"id": doc.id} for doc in query.stream()]
+        return [_serialize_firestore_doc(doc.to_dict()) | {"id": doc.id} for doc in query.stream()]
 
     # ============================================
     # GRAPH STATE PERSISTENCE
@@ -310,7 +335,7 @@ class FirebaseService:
 
         docs = list(query.stream())
         if docs:
-            return docs[0].to_dict() | {"id": docs[0].id}
+            return _serialize_firestore_doc(docs[0].to_dict()) | {"id": docs[0].id}
         return None
 
     # ============================================
@@ -374,7 +399,7 @@ class FirebaseService:
             .limit(limit)
         )
 
-        return [doc.to_dict() | {"id": doc.id} for doc in query.stream()]
+        return [_serialize_firestore_doc(doc.to_dict()) | {"id": doc.id} for doc in query.stream()]
 
 
 # Singleton instance
