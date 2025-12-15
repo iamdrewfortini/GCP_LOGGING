@@ -24,6 +24,7 @@ class FirebaseService:
         self.app = None
         self.db_ref = None
         self.firestore_db = None
+        self.enabled = False
         self._init_firebase()
 
     def _init_firebase(self):
@@ -33,6 +34,7 @@ class FirebaseService:
             if firebase_admin._apps:
                 self.app = firebase_admin.get_app()
                 self.firestore_db = firestore.client()
+                self.enabled = True
                 try:
                     self.db_ref = db.reference()
                 except Exception:
@@ -59,6 +61,7 @@ class FirebaseService:
 
             # Initialize Firestore
             self.firestore_db = firestore.client()
+            self.enabled = True
 
             if db_url:
                 self.db_ref = db.reference()
