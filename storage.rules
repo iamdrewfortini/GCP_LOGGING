@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow read/write access to all users in development
+    // TODO: Tighten these rules for production
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Public read access for certain paths
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // User-specific uploads
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
