@@ -1,10 +1,11 @@
 from langchain_core.tools import tool
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 import json
 from datetime import datetime, timedelta
-from src.agent.tools.bq import run_bq_query, BQQueryInput
-# No longer need to import BQQueryInput from contracts if it's from bq
-from src.config import config # Keep this import for other tools if needed
+
+from src.agent.tools.bq import run_bq_query
+from src.agent.tools.contracts import BQQueryInput
+from src.config import config
 
 @tool
 def bq_query_tool(sql: str, params: Optional[Dict[str, Any]] = None) -> str:
@@ -34,7 +35,8 @@ def search_logs_tool(query: str, severity: Optional[str] = None, hours: int = 1,
     from src.config import config
 
     # Construct SQL dynamically
-    table = f"{config.PROJECT_ID_LOGS}.{config.LOG_ANALYTICS_LINKED_DATASET}._AllLogs" # Assumption based on standard Linked Dataset
+    dataset_fqn = config.log_analytics_linked_dataset_fqn()
+    table = f"{dataset_fqn}._AllLogs"  # Standard Log Analytics linked dataset table
     
     # Linked datasets usually have `timestamp`, `textPayload`, `jsonPayload`, `severity` etc.
     # We might need to adjust column names based on the actual schema of the linked dataset.
