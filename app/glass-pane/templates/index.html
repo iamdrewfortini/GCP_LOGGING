@@ -3,56 +3,135 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Logging Glass Pane</title>
+    <title>Glass Pane - Organization Log Viewer</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8f9fa; }
-        .log-container { margin-top: 50px; }
-        .severity-ERROR { color: #dc3545; font-weight: bold; }
+        .log-container { margin-top: 30px; }
+        .severity-ERROR { color: #dc3545; }
         .severity-CRITICAL { color: #842029; background-color: #f8d7da; }
+        .severity-ALERT { color: #664d03; background-color: #fff3cd; }
+        .severity-EMERGENCY { color: #fff; background-color: #dc3545; }
+        .severity-WARNING { color: #664d03; }
+        .filter-form { background-color: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .stats-badge { font-size: 0.9em; }
+        .message-cell { max-width: 400px; word-wrap: break-word; }
+        .trace-link { font-family: monospace; font-size: 0.75em; }
     </style>
   </head>
   <body>
-    <div class="container log-container">
-        <h1 class="mb-4">🔍 Organization Logging Glass Pane</h1>
-        
-        {% if error %}
-        <div class="alert alert-warning" role="alert">
-            {{ error }}
+    <div class="container-fluid log-container px-4">
+        <h1 class="mb-3">Glass Pane <small class="text-muted fs-5">Organization Log Viewer</small></h1>
+
+        {% if stats %}
+        <div class="alert alert-info py-2" role="alert">
+            <span class="stats-badge"><strong>{{ stats.total_logs }}</strong> logs from <strong>{{ stats.total_sources }}</strong> sources in last <strong>{{ stats.hours }}</strong> hours</span>
         </div>
         {% endif %}
 
+        {% if error %}
+        <div class="alert alert-danger" role="alert">
+            <strong>Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+
+        <!-- Filter Form -->
+        <form method="get" class="filter-form shadow-sm">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label small">Severity</label>
+                    <select name="severity" class="form-select form-select-sm">
+                        <option value="">All Severities</option>
+                        {% for sev in ['DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'] %}
+                        <option value="{{ sev }}" {% if filters and filters.severity == sev %}selected{% endif %}>{{ sev }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Service</label>
+                    <input type="text" name="service" class="form-control form-control-sm" placeholder="e.g., glass-pane" value="{{ filters.service or '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Search Message</label>
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Search text..." value="{{ filters.search or '' }}">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label small">Hours</label>
+                    <input type="number" name="hours" class="form-control form-control-sm" min="1" max="168" value="{{ filters.hours or 24 }}">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label small">Limit</label>
+                    <input type="number" name="limit" class="form-control form-control-sm" min="1" max="1000" value="{{ filters.limit or 100 }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">Apply Filters</button>
+                </div>
+                <div class="col-md-1">
+                    <a href="/" class="btn btn-outline-secondary btn-sm w-100">Reset</a>
+                </div>
+            </div>
+        </form>
+
         <div class="card shadow">
-            <div class="card-header bg-dark text-white">
-                Recent Critical/Error Logs (Last 24h)
+            <div class="card-header bg-dark text-white py-2">
+                <span>Logs</span>
+                {% if rows %}
+                <span class="badge bg-secondary float-end">{{ rows|length }} results</span>
+                {% endif %}
             </div>
             <div class="card-body p-0">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Timestamp</th>
-                            <th>Severity</th>
-                            <th>Service/Log</th>
-                            <th>Message</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in rows %}
-                        <tr class="severity-{{ row.severity }}">
-                            <td>{{ row.timestamp }}</td>
-                            <td>{{ row.severity }}</td>
-                            <td>{{ row.logName }}</td>
-                            <td>{{ row.message }}</td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="4" class="text-center py-3">No recent errors found (or DB empty).</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 150px;">Timestamp</th>
+                                <th style="width: 80px;">Severity</th>
+                                <th style="width: 150px;">Service</th>
+                                <th class="message-cell">Message</th>
+                                <th style="width: 120px;">Source</th>
+                                <th style="width: 100px;">Trace</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in rows %}
+                            <tr class="severity-{{ row.severity }}">
+                                <td><small>{{ row.event_timestamp.strftime('%Y-%m-%d %H:%M:%S') if row.event_timestamp else '' }}</small></td>
+                                <td>
+                                    {% if row.severity in ['ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'] %}
+                                    <span class="badge bg-danger">{{ row.severity }}</span>
+                                    {% elif row.severity == 'WARNING' %}
+                                    <span class="badge bg-warning text-dark">{{ row.severity }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ row.severity }}</span>
+                                    {% endif %}
+                                </td>
+                                <td><small title="{{ row.log_name }}">{{ row.service_name }}</small></td>
+                                <td class="message-cell"><small>{{ row.display_message[:300] if row.display_message else '' }}{% if row.display_message and row.display_message|length > 300 %}...{% endif %}</small></td>
+                                <td><small class="text-muted">{{ row.source_table }}</small></td>
+                                <td>
+                                    {% if row.trace_id %}
+                                    <small class="trace-link text-muted" title="{{ row.trace_id }}">{{ row.trace_id[-12:] }}</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No logs found matching the current filters.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
+
+        <footer class="text-center text-muted mt-4 mb-3">
+            <small>Glass Pane v2.0 | Querying <code>org_observability.logs_canonical_v2</code></small>
+        </footer>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>
