@@ -13,7 +13,9 @@ from src.agent.tools.definitions import (
     bq_query_tool, search_logs_tool, runbook_search_tool, trace_lookup_tool,
     service_health_tool, repo_search_tool, create_view_tool, dashboard_spec_tool,
     # New enhanced tools
-    analyze_logs, get_log_summary, find_related_logs, suggest_queries
+    analyze_logs, get_log_summary, find_related_logs, suggest_queries,
+    # Semantic search tools (Phase 2)
+    semantic_search_logs, find_similar_logs
 )
 from src.agent.tokenization import TokenBudgetManager, estimate_tool_output_tokens
 from langgraph.prebuilt import ToolNode
@@ -133,6 +135,9 @@ tools = [
     get_log_summary,
     find_related_logs,
     suggest_queries,
+    # Semantic search tools (Phase 2)
+    semantic_search_logs,
+    find_similar_logs,
     # Standard tools
     search_logs_tool,
     trace_lookup_tool,
@@ -185,6 +190,72 @@ Always structure your responses clearly:
 - End with recommendations or suggested next steps
 
 Remember: Users want answers, not questions. Take action first, ask later only if truly needed."""
+
+def retrieval_node(state: AgentState):
+    """Retrieval node - semantic search for relevant context (Phase 2).
+
+    Performs vector search to find semantically similar logs/content
+    before diagnosis begins. Adds context to help the agent.
+
+    This node runs before diagnose to provide relevant background.
+    """
+    from src.services.vector_service import vector_service
+    from src.config import config
+
+    user_query = state.get("user_query", "")
+
+    # Skip if vector search is disabled or no query
+    if not vector_service.enabled or not user_query:
+        logger.debug("Skipping retrieval: vector search disabled or no query")
+        return {
+            "phase": "diagnose",
+            "evidence": state.get("evidence", []),
+        }
+
+    try:
+        # Perform semantic search
+        project_id = config.PROJECT_ID_LOGS
+        results = vector_service.semantic_search_logs(
+            query=user_query,
+            project_id=project_id,
+            top_k=5,  # Get top 5 relevant logs
+        )
+
+        if results:
+            # Add results as evidence
+            evidence = state.get("evidence", [])
+            semantic_context = {
+                "type": "semantic_search",
+                "query": user_query,
+                "results": [
+                    {
+                        "score": r.score,
+                        "content": r.content[:500],  # Limit content length
+                        "severity": r.metadata.get("severity"),
+                        "service": r.metadata.get("service"),
+                        "timestamp": r.timestamp,
+                    }
+                    for r in results
+                ],
+                "count": len(results),
+            }
+            evidence.append(semantic_context)
+
+            logger.info(f"Retrieval found {len(results)} relevant logs for query")
+
+            return {
+                "phase": "diagnose",
+                "evidence": evidence,
+            }
+
+    except Exception as e:
+        logger.warning(f"Retrieval error (non-fatal): {e}")
+
+    return {
+        "phase": "diagnose",
+        "evidence": state.get("evidence", []),
+    }
+
 
 def diagnose_node(state: AgentState):
     """Diagnose node - understand and gather evidence.

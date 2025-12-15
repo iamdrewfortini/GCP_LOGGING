@@ -91,6 +91,41 @@ def get_tool_invocations_schema() -> list[bigquery.SchemaField]:
     ]
 
 
+def get_embeddings_metadata_schema() -> list[bigquery.SchemaField]:
+    """Get schema for embeddings_metadata table (Phase 2).
+
+    Tracks embedding generation for vector search analytics.
+    """
+    return [
+        bigquery.SchemaField("embedding_id", "STRING", mode="REQUIRED",
+                            description="UUIDv4 unique embedding identifier (matches Qdrant vector ID)"),
+        bigquery.SchemaField("created_at", "TIMESTAMP", mode="REQUIRED",
+                            description="Embedding creation timestamp (partition key)"),
+        bigquery.SchemaField("project_id", "STRING", mode="REQUIRED",
+                            description="Project ID for tenant isolation"),
+        bigquery.SchemaField("source_type", "STRING", mode="REQUIRED",
+                            description="Source type: log, chat_message, document"),
+        bigquery.SchemaField("text_hash", "STRING", mode="REQUIRED",
+                            description="SHA-256 hash of source text (for deduplication)"),
+        bigquery.SchemaField("content_preview", "STRING", mode="NULLABLE",
+                            description="First 500 chars of source text"),
+        bigquery.SchemaField("embedding_model", "STRING", mode="REQUIRED",
+                            description="Model used for embedding generation"),
+        bigquery.SchemaField("embedding_dim", "INT64", mode="REQUIRED",
+                            description="Embedding vector dimension (e.g., 768)"),
+        bigquery.SchemaField("collection_name", "STRING", mode="REQUIRED",
+                            description="Qdrant collection name"),
+        bigquery.SchemaField("metadata", "JSON", mode="NULLABLE",
+                            description="Additional metadata (severity, service, etc.)"),
+        bigquery.SchemaField("processing_time_ms", "INT64", mode="NULLABLE",
+                            description="Time to generate embedding in milliseconds"),
+        bigquery.SchemaField("status", "STRING", mode="REQUIRED",
+                            description="Status: success, failure, duplicate"),
+        bigquery.SchemaField("error_message", "STRING", mode="NULLABLE",
+                            description="Error message if failed"),
+    ]
+
+
 def create_dataset(
     client: bigquery.Client,
     project_id: str,
@@ -241,6 +276,24 @@ def create_views(
                 GROUP BY tool_name
             """,
         },
+        {
+            "name": "v_embeddings_summary",
+            "description": "Embedding generation analytics by source type (Phase 2)",
+            "query": f"""
+                SELECT
+                    project_id,
+                    source_type,
+                    DATE(created_at) AS created_date,
+                    COUNT(*) AS total_embeddings,
+                    COUNTIF(status = 'success') AS success_count,
+                    COUNTIF(status = 'failure') AS failure_count,
+                    COUNTIF(status = 'duplicate') AS duplicate_count,
+                    AVG(processing_time_ms) AS avg_processing_time_ms,
+                    AVG(embedding_dim) AS embedding_dim
+                FROM `{project_id}.{dataset_id}.embeddings_metadata`
+                GROUP BY project_id, source_type, DATE(created_at)
+            """,
+        },
     ]
 
     success = True
@@ -333,6 +386,21 @@ def provision_chat_analytics(
             get_tool_invocations_schema(),
             partition_field="started_at",
             clustering_fields=["tool_name", "status", "session_id"],
+            partition_expiration_days=PARTITION_EXPIRATION_DAYS,
+            dry_run=dry_run,
+        ):
+            success = False
+
+    # Create embeddings_metadata table (Phase 2)
+    if client or dry_run:
+        if not create_table(
+            client,
+            project_id,
+            dataset_id,
+            "embeddings_metadata",
+            get_embeddings_metadata_schema(),
+            partition_field="created_at",
+            clustering_fields=["project_id", "source_type", "status"],
             partition_expiration_days=PARTITION_EXPIRATION_DAYS,
             dry_run=dry_run,
         ):

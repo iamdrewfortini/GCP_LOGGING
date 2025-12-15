@@ -1,0 +1,4 @@
+functions-framework==3.*
+google-cloud-aiplatform>=1.38.0
+vertexai>=1.0.0
+qdrant-client>=1.6.0

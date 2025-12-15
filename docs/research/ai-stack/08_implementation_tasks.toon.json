@@ -1,57 +1,500 @@
 {
+  "name": "AI Stack Implementation",
+  "version": "1.0.0",
+  "description": "Phased implementation of AI intelligence stack for Glass Pane",
   "phases": [
     {
-      "id": "phase_1",
-      "name": "Foundation: Redis & Qdrant",
+      "id": "phase1",
+      "name": "Foundation - Tokenization & Dual-Write",
+      "duration_days": 7,
+      "dependencies": [],
       "tasks": [
         {
-          "id": "p1_t1",
-          "description": "Install redis and qdrant-client dependencies",
-          "verification_cmd": "pip list | grep -E 'redis|qdrant'"
+          "id": "task1.1",
+          "name": "Add tiktoken tokenization module",
+          "description": "Create src/agent/tokenization.py with TokenBudgetManager class",
+          "acceptance_criteria": [
+            "TokenBudgetManager can count tokens for text and messages",
+            "Budget checking works (check_budget, reserve_tokens)",
+            "Unit tests pass with 90%+ coverage"
+          ],
+          "verification_command": "pytest tests/unit/test_tokenization.py -v",
+          "estimated_hours": 4
         },
         {
-          "id": "p1_t2",
-          "description": "Implement RedisService (Connection + Queue Primitives)",
-          "verification_cmd": "python -c 'from src.services.redis_service import redis_service; print(redis_service.ping())'"
+          "id": "task1.2",
+          "name": "Integrate token tracking into LangGraph state",
+          "description": "Add token_manager and token_budget to AgentState, update nodes to track usage",
+          "dependencies": ["task1.1"],
+          "acceptance_criteria": [
+            "AgentState includes token_manager and token_budget fields",
+            "diagnose_node, verify_node, optimize_node track tokens",
+            "Token budget status returned in graph output"
+          ],
+          "verification_command": "pytest tests/unit/test_agent_nodes.py::test_token_tracking -v",
+          "estimated_hours": 6
         },
         {
-          "id": "p1_t3",
-          "description": "Implement QdrantService (Connection + Collection Setup with Time Schema)",
-          "verification_cmd": "python -c 'from src.services.qdrant_service import qdrant_service; print(qdrant_service.get_collections())'"
+          "id": "task1.3",
+          "name": "Add token_count SSE event",
+          "description": "Emit token_count events in streaming response",
+          "dependencies": ["task1.2"],
+          "acceptance_criteria": [
+            "SSE stream includes token_count events",
+            "Events include input_tokens, output_tokens, total_tokens, budget_remaining",
+            "Frontend can parse token_count events"
+          ],
+          "verification_command": "pytest tests/integration/test_chat_streaming.py::test_token_events -v",
+          "estimated_hours": 3
         },
         {
-          "id": "p1_t4",
-          "description": "Refactor API to init these services on startup",
-          "verification_cmd": "curl http://localhost:8080/health"
+          "id": "task1.4",
+          "name": "Create BigQuery chat_analytics dataset",
+          "description": "Create dataset and chat_events table with partitioning/clustering",
+          "acceptance_criteria": [
+            "Dataset chat_analytics exists in diatonic-ai-gcp",
+            "Table chat_events created with correct schema",
+            "Partition by DATE(event_timestamp), cluster by session_id, user_id, event_type",
+            "Partition expiration set to 2555 days (7 years)"
+          ],
+          "verification_command": "bq show diatonic-ai-gcp:chat_analytics.chat_events",
+          "estimated_hours": 2
+        },
+        {
+          "id": "task1.5",
+          "name": "Create Pub/Sub chat-events topic",
+          "description": "Create topic and subscription for chat event streaming",
+          "acceptance_criteria": [
+            "Topic chat-events exists",
+            "Subscription chat-events-to-bq exists with 60s ack deadline",
+            "IAM permissions configured for Cloud Functions"
+          ],
+          "verification_command": "gcloud pubsub topics describe chat-events",
+          "estimated_hours": 1
+        },
+        {
+          "id": "task1.6",
+          "name": "Implement dual-write service",
+          "description": "Create DualWriteService that writes to Firestore + publishes to Pub/Sub",
+          "dependencies": ["task1.5"],
+          "acceptance_criteria": [
+            "DualWriteService.write_message() writes to Firestore synchronously",
+            "DualWriteService.write_message() publishes to Pub/Sub asynchronously",
+            "Error in Pub/Sub publish doesn't block Firestore write",
+            "Unit tests verify both paths"
+          ],
+          "verification_command": "pytest tests/unit/test_dual_write_service.py -v",
+          "estimated_hours": 5
+        },
+        {
+          "id": "task1.7",
+          "name": "Deploy analytics worker Cloud Function",
+          "description": "Create and deploy function to consume chat-events and write to BigQuery",
+          "dependencies": ["task1.4", "task1.5"],
+          "acceptance_criteria": [
+            "Function analytics-worker deployed to us-central1",
+            "Triggered by chat-events topic",
+            "Successfully writes events to chat_events table",
+            "Error handling and retry logic implemented"
+          ],
+          "verification_command": "gcloud functions describe analytics-worker --region=us-central1",
+          "estimated_hours": 4
+        },
+        {
+          "id": "task1.8",
+          "name": "Update /api/chat to use dual-write",
+          "description": "Integrate DualWriteService into chat endpoint",
+          "dependencies": ["task1.6"],
+          "acceptance_criteria": [
+            "User messages written to Firestore + Pub/Sub",
+            "Assistant messages written to Firestore + Pub/Sub",
+            "Events include token counts and metadata",
+            "Integration tests pass"
+          ],
+          "verification_command": "pytest tests/integration/test_chat_dual_write.py -v",
+          "estimated_hours": 4
         }
       ]
     },
     {
-      "id": "phase_2",
-      "name": "Async Pipeline (Redis Queues)",
+      "id": "phase2",
+      "name": "Vector Search & Embeddings",
+      "duration_days": 10,
+      "dependencies": ["phase1"],
       "tasks": [
         {
-          "id": "p2_t1",
-          "description": "Implement Worker Entrypoint (consumes redis:q:embeddings)",
-          "verification_cmd": "python src/workers/main.py --dry-run"
+          "id": "task2.1",
+          "name": "Create Vertex AI Vector Search index",
+          "description": "Set up managed vector index for log embeddings",
+          "acceptance_criteria": [
+            "Index log-embeddings-v1 created in us-central1",
+            "Index endpoint deployed",
+            "GCS bucket for vector staging created",
+            "IAM permissions configured"
+          ],
+          "verification_command": "gcloud ai indexes list --region=us-central1",
+          "estimated_hours": 3
         },
         {
-          "id": "p2_t2",
-          "description": "Implement 'Embed & Offload' logic (Worker -> Qdrant)",
-          "verification_cmd": "python scripts/test_pipeline.py"
+          "id": "task2.2",
+          "name": "Create VectorService module",
+          "description": "Implement embedding generation and vector search",
+          "dependencies": ["task2.1"],
+          "acceptance_criteria": [
+            "VectorService.embed_and_store() generates embeddings",
+            "VectorService.semantic_search() queries index",
+            "Deduplication by text hash works",
+            "Metadata stored in Firestore"
+          ],
+          "verification_command": "pytest tests/unit/test_vector_service.py -v",
+          "estimated_hours": 8
+        },
+        {
+          "id": "task2.3",
+          "name": "Create embedding-jobs Pub/Sub topic",
+          "description": "Set up queue for async embedding generation",
+          "acceptance_criteria": [
+            "Topic embedding-jobs exists",
+            "Subscription embedding-worker exists with 300s ack deadline",
+            "Dead letter queue configured"
+          ],
+          "verification_command": "gcloud pubsub topics describe embedding-jobs",
+          "estimated_hours": 1
+        },
+        {
+          "id": "task2.4",
+          "name": "Deploy embedding worker Cloud Function",
+          "description": "Create function to generate embeddings from queue",
+          "dependencies": ["task2.2", "task2.3"],
+          "acceptance_criteria": [
+            "Function embedding-worker deployed",
+            "Consumes embedding-jobs messages",
+            "Generates embeddings via Vertex AI",
+            "Upserts to vector index",
+            "Handles errors and retries"
+          ],
+          "verification_command": "gcloud functions describe embedding-worker --region=us-central1",
+          "estimated_hours": 6
+        },
+        {
+          "id": "task2.5",
+          "name": "Add semantic_search_logs tool",
+          "description": "Create LangGraph tool for semantic log search",
+          "dependencies": ["task2.2"],
+          "acceptance_criteria": [
+            "Tool semantic_search_logs() implemented",
+            "Accepts query, top_k, filters",
+            "Returns ranked results with metadata",
+            "Integrated into LangGraph tools list"
+          ],
+          "verification_command": "pytest tests/unit/test_semantic_search_tool.py -v",
+          "estimated_hours": 4
+        },
+        {
+          "id": "task2.6",
+          "name": "Update analytics worker to trigger embeddings",
+          "description": "Publish to embedding-jobs for ERROR/CRITICAL logs",
+          "dependencies": ["task2.3"],
+          "acceptance_criteria": [
+            "Analytics worker publishes to embedding-jobs",
+            "Only ERROR/CRITICAL logs trigger embeddings",
+            "Rate limiting applied (max 1000/user/day)",
+            "Deduplication check before publishing"
+          ],
+          "verification_command": "pytest tests/integration/test_embedding_pipeline.py -v",
+          "estimated_hours": 3
+        },
+        {
+          "id": "task2.7",
+          "name": "Create embeddings_metadata BigQuery table",
+          "description": "Track embedding generation for cost analysis",
+          "acceptance_criteria": [
+            "Table embeddings_metadata created",
+            "Partitioned by DATE(created_at)",
+            "Clustered by source_type, status",
+            "Embedding worker writes to table"
+          ],
+          "verification_command": "bq show diatonic-ai-gcp:chat_analytics.embeddings_metadata",
+          "estimated_hours": 2
+        },
+        {
+          "id": "task2.8",
+          "name": "Add retrieval node to LangGraph",
+          "description": "Create retrieval_node that uses semantic search",
+          "dependencies": ["task2.5"],
+          "acceptance_criteria": [
+            "retrieval_node implemented",
+            "Hybrid search (semantic + keyword)",
+            "Ranking and deduplication",
+            "Integrated into graph workflow"
+          ],
+          "verification_command": "pytest tests/unit/test_retrieval_node.py -v",
+          "estimated_hours": 5
         }
       ]
     },
     {
-      "id": "phase_3",
-      "name": "Full RAG & Artifacts",
+      "id": "phase3",
+      "name": "Enhanced LangGraph & Frontend",
+      "duration_days": 7,
+      "dependencies": ["phase2"],
       "tasks": [
         {
-          "id": "p3_t1",
-          "description": "Implement Repo Indexer using Qdrant",
-          "verification_cmd": "python scripts/index_repo.py"
+          "id": "task3.1",
+          "name": "Add structured outputs to nodes",
+          "description": "Use Pydantic models for node outputs",
+          "acceptance_criteria": [
+            "IngressValidation, Plan, Response models defined",
+            "Nodes use llm.with_structured_output()",
+            "Validation errors handled gracefully"
+          ],
+          "verification_command": "pytest tests/unit/test_structured_outputs.py -v",
+          "estimated_hours": 6
+        },
+        {
+          "id": "task3.2",
+          "name": "Implement checkpoint node",
+          "description": "Save LangGraph state to Firestore",
+          "acceptance_criteria": [
+            "checkpoint_node saves state to Firestore",
+            "Emits checkpoint SSE event",
+            "State can be restored from checkpoint"
+          ],
+          "verification_command": "pytest tests/unit/test_checkpoint_node.py -v",
+          "estimated_hours": 4
+        },
+        {
+          "id": "task3.3",
+          "name": "Add tool_invocations BigQuery table",
+          "description": "Track detailed tool metrics",
+          "acceptance_criteria": [
+            "Table tool_invocations created",
+            "Partitioned by DATE(started_at)",
+            "Clustered by tool_name, status, session_id",
+            "Tool executor writes metrics"
+          ],
+          "verification_command": "bq show diatonic-ai-gcp:chat_analytics.tool_invocations",
+          "estimated_hours": 3
+        },
+        {
+          "id": "task3.4",
+          "name": "Create MeteredToolNode wrapper",
+          "description": "Wrap ToolNode to track metrics",
+          "dependencies": ["task3.3"],
+          "acceptance_criteria": [
+            "MeteredToolNode extends ToolNode",
+            "Tracks duration, status, cost",
+            "Publishes metrics to Pub/Sub",
+            "Integrated into graph"
+          ],
+          "verification_command": "pytest tests/unit/test_metered_tool_node.py -v",
+          "estimated_hours": 4
+        },
+        {
+          "id": "task3.5",
+          "name": "Update frontend useChatStream hook",
+          "description": "Add token tracking and new event types",
+          "acceptance_criteria": [
+            "Hook handles token_count events",
+            "Hook handles checkpoint events",
+            "Hook handles citation events",
+            "TokenBudget state tracked"
+          ],
+          "verification_command": "npm test -- use-chat-stream.test.ts",
+          "estimated_hours": 5
+        },
+        {
+          "id": "task3.6",
+          "name": "Create TokenBudgetIndicator component",
+          "description": "Display token usage in chat UI",
+          "dependencies": ["task3.5"],
+          "acceptance_criteria": [
+            "Component shows used/remaining tokens",
+            "Progress bar with color coding",
+            "Updates in realtime during streaming"
+          ],
+          "verification_command": "npm test -- TokenBudgetIndicator.test.tsx",
+          "estimated_hours": 3
+        },
+        {
+          "id": "task3.7",
+          "name": "Create ToolCallTimeline component",
+          "description": "Show tool execution timeline",
+          "dependencies": ["task3.5"],
+          "acceptance_criteria": [
+            "Displays tool calls with status icons",
+            "Collapsible input/output",
+            "Shows duration for completed calls"
+          ],
+          "verification_command": "npm test -- ToolCallTimeline.test.tsx",
+          "estimated_hours": 4
+        },
+        {
+          "id": "task3.8",
+          "name": "Create CitationsPanel component",
+          "description": "Display sources and citations",
+          "dependencies": ["task3.5"],
+          "acceptance_criteria": [
+            "Shows citation sources",
+            "Displays relevance scores",
+            "Excerpts with highlighting"
+          ],
+          "verification_command": "npm test -- CitationsPanel.test.tsx",
+          "estimated_hours": 3
+        }
+      ]
+    },
+    {
+      "id": "phase4",
+      "name": "MCP Tool Generator",
+      "duration_days": 10,
+      "dependencies": ["phase3"],
+      "tasks": [
+        {
+          "id": "task4.1",
+          "name": "Create tool spec schema and validator",
+          "description": "Define YAML schema and Pydantic validator",
+          "acceptance_criteria": [
+            "ToolSpec Pydantic model defined",
+            "load_tool_spec() validates YAML",
+            "Example specs validate successfully"
+          ],
+          "verification_command": "pytest tests/unit/test_tool_spec_validator.py -v",
+          "estimated_hours": 4
+        },
+        {
+          "id": "task4.2",
+          "name": "Create code generator with Jinja2 templates",
+          "description": "Generate Python tool code from specs",
+          "dependencies": ["task4.1"],
+          "acceptance_criteria": [
+            "ToolGenerator.generate() creates Python file",
+            "Generated code is syntactically valid",
+            "Includes safety checks and audit logging",
+            "Auto-generates unit tests"
+          ],
+          "verification_command": "pytest tests/unit/test_tool_generator.py -v",
+          "estimated_hours": 8
+        },
+        {
+          "id": "task4.3",
+          "name": "Implement ToolRuntime with safety checks",
+          "description": "Runtime that enforces safety policies",
+          "dependencies": ["task4.1"],
+          "acceptance_criteria": [
+            "ToolRuntime validates inputs against policies",
+            "Blocks denied keywords in SQL",
+            "Enforces dataset restrictions",
+            "Logs all invocations to BigQuery"
+          ],
+          "verification_command": "pytest tests/unit/test_tool_runtime.py -v",
+          "estimated_hours": 6
+        },
+        {
+          "id": "task4.4",
+          "name": "Create ToolRegistry",
+          "description": "Registry for managing generated tools",
+          "acceptance_criteria": [
+            "ToolRegistry stores tool metadata in Firestore",
+            "register(), get_tool(), list_tools() methods work",
+            "Caching implemented",
+            "Version tracking"
+          ],
+          "verification_command": "pytest tests/unit/test_tool_registry.py -v",
+          "estimated_hours": 4
+        },
+        {
+          "id": "task4.5",
+          "name": "Create example tool specs",
+          "description": "Write specs for common tools",
+          "dependencies": ["task4.1"],
+          "acceptance_criteria": [
+            "bq_query_readonly.yaml created",
+            "bq_list_datasets.yaml created",
+            "bq_get_schema.yaml created",
+            "dashboard_get_widget_config.yaml created",
+            "All specs validate"
+          ],
+          "verification_command": "python -m src.mcp.cli validate src/mcp/specs/*.yaml",
+          "estimated_hours": 3
+        },
+        {
+          "id": "task4.6",
+          "name": "Generate and test example tools",
+          "description": "Generate tools from example specs",
+          "dependencies": ["task4.2", "task4.5"],
+          "acceptance_criteria": [
+            "All example tools generated successfully",
+            "Generated tests pass",
+            "Tools registered in registry",
+            "Manual testing confirms functionality"
+          ],
+          "verification_command": "pytest tests/mcp/test_generated_tools.py -v",
+          "estimated_hours": 5
+        },
+        {
+          "id": "task4.7",
+          "name": "Create MCP CLI",
+          "description": "Command-line interface for tool management",
+          "dependencies": ["task4.2", "task4.4"],
+          "acceptance_criteria": [
+            "CLI commands: generate, validate, list, delete",
+            "Help text and examples",
+            "Error handling and user feedback"
+          ],
+          "verification_command": "python -m src.mcp.cli --help",
+          "estimated_hours": 4
+        },
+        {
+          "id": "task4.8",
+          "name": "Add mcp_tools Firestore collection",
+          "description": "Store tool registry in Firestore",
+          "acceptance_criteria": [
+            "Collection mcp_tools created",
+            "Security rules allow read for authenticated users",
+            "Only backend can write",
+            "Indexes for tool_id, status, created_at"
+          ],
+          "verification_command": "firebase firestore:get mcp_tools",
+          "estimated_hours": 2
         }
       ]
     }
-  ]
+  ],
+  "verification": {
+    "unit_tests": "pytest tests/unit/ -v --cov=src --cov-report=html",
+    "integration_tests": "pytest tests/integration/ -v",
+    "e2e_tests": "cd frontend && npm run test:e2e",
+    "type_check": "mypy src/",
+    "lint": "ruff check src/",
+    "security_scan": "bandit -r src/"
+  },
+  "rollback_plan": {
+    "phase1": "Disable dual-write, revert to Firestore-only",
+    "phase2": "Disable semantic search tool, use keyword search only",
+    "phase3": "Revert to simple chat hook without token tracking",
+    "phase4": "Disable MCP tool generation, use static tools only"
+  },
+  "success_metrics": {
+    "phase1": [
+      "Token tracking visible in UI",
+      "Chat events flowing to BigQuery",
+      "No increase in error rate"
+    ],
+    "phase2": [
+      "Semantic search returns relevant results",
+      "Embedding generation < 500ms p95",
+      "Vector search < 200ms p95"
+    ],
+    "phase3": [
+      "Tool metrics visible in BigQuery",
+      "Frontend components render correctly",
+      "No performance degradation"
+    ],
+    "phase4": [
+      "Can generate tool from spec in < 5s",
+      "Generated tools pass safety checks",
+      "Tool invocations logged to BigQuery"
+    ]
+  }
 }
