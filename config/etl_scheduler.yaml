@@ -1,0 +1,54 @@
+# ETL Scheduler Configuration
+# Cloud Scheduler jobs for automated ETL pipeline execution
+
+# Project configuration
+project_id: diatonic-ai-gcp
+region: us-central1
+timezone: America/Chicago
+
+# Pub/Sub topic for ETL jobs
+etl_topic: etl-jobs
+etl_results_topic: etl-results
+
+# Scheduler jobs
+jobs:
+  # Incremental ETL - runs every hour
+  - name: etl-incremental-hourly
+    description: Process new logs from the last 2 hours
+    schedule: "0 * * * *"  # Every hour at :00
+    time_zone: America/Chicago
+    message:
+      job_type: incremental
+      hours: 2
+      enable_ai: false
+      batch_size: 1000
+
+  # Full ETL - runs daily at 2am
+  - name: etl-full-daily
+    description: Full ETL processing with AI enrichment
+    schedule: "0 2 * * *"  # Daily at 2:00 AM
+    time_zone: America/Chicago
+    message:
+      job_type: full
+      enable_ai: true
+      batch_size: 500
+
+  # AI Enrichment - runs every 6 hours
+  - name: etl-ai-enrichment
+    description: AI enrichment pass on recent logs
+    schedule: "0 */6 * * *"  # Every 6 hours
+    time_zone: America/Chicago
+    message:
+      job_type: incremental
+      hours: 6
+      enable_ai: true
+      batch_size: 200
+
+  # Cleanup job - runs weekly
+  - name: etl-cleanup-weekly
+    description: Clean up old source data after ETL
+    schedule: "0 3 * * 0"  # Sunday at 3:00 AM
+    time_zone: America/Chicago
+    message:
+      job_type: cleanup
+      cleanup_days: 30

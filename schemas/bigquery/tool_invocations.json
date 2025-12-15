@@ -1,0 +1,104 @@
+[
+  {
+    "name": "invocation_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Unique identifier for this tool invocation"
+  },
+  {
+    "name": "run_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Agent run ID this invocation belongs to"
+  },
+  {
+    "name": "session_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "User session ID"
+  },
+  {
+    "name": "user_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "User identifier"
+  },
+  {
+    "name": "tool_name",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Name of the tool invoked"
+  },
+  {
+    "name": "tool_category",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Tool category (search, query, analysis, etc.)"
+  },
+  {
+    "name": "parameters",
+    "type": "JSON",
+    "mode": "NULLABLE",
+    "description": "Tool input parameters as JSON"
+  },
+  {
+    "name": "result",
+    "type": "JSON",
+    "mode": "NULLABLE",
+    "description": "Tool output result as JSON"
+  },
+  {
+    "name": "status",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Invocation status: success, error, timeout"
+  },
+  {
+    "name": "error_message",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Error message if status is error"
+  },
+  {
+    "name": "started_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "When the tool invocation started"
+  },
+  {
+    "name": "completed_at",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE",
+    "description": "When the tool invocation completed"
+  },
+  {
+    "name": "duration_ms",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "Duration in milliseconds"
+  },
+  {
+    "name": "token_count",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "Estimated token count for tool output"
+  },
+  {
+    "name": "cost_usd",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Estimated cost in USD"
+  },
+  {
+    "name": "phase",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Agent phase when tool was invoked (diagnose, verify, optimize)"
+  },
+  {
+    "name": "metadata",
+    "type": "JSON",
+    "mode": "NULLABLE",
+    "description": "Additional metadata as JSON"
+  }
+]

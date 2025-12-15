@@ -1,0 +1,42 @@
+[Unit]
+Description=GCP Logging Embedding Worker
+Documentation=https://github.com/your-org/gcp-logging
+After=network.target redis.service
+
+[Service]
+Type=simple
+User=daclab-ai
+Group=daclab-ai
+WorkingDirectory=/home/daclab-ai/GCP_LOGGING
+
+# Environment setup
+Environment=PATH=/home/daclab-ai/GCP_LOGGING/.venv/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-/home/daclab-ai/GCP_LOGGING/.env
+
+# Main command
+ExecStart=/home/daclab-ai/GCP_LOGGING/.venv/bin/python -m scripts.embedding_worker_cli start
+
+# Restart configuration
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Resource limits
+MemoryMax=2G
+CPUQuota=100%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=embedding-worker
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/daclab-ai/GCP_LOGGING
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
