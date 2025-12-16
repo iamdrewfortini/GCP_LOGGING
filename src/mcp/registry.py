@@ -1,34 +1,89 @@
-"""
-Tool Registry
+"""Tool Registry
 
 Manages registered MCP tools in Firestore.
+
+IMPORTANT: Do not initialize Firebase/Firestore at import time.
+- CI environments may not have ADC.
+- Import-time side effects can break pytest collection.
+
 Phase 4, Task 4.4: ToolRegistry
 """
 
-from typing import Dict, Any, List, Optional
+from __future__ import annotations
+
+import logging
+import os
+import threading
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
 import firebase_admin
 from firebase_admin import firestore
-import logging
 
 logger = logging.getLogger(__name__)
 
-# Initialize Firebase if not already initialized
-try:
-    firebase_admin.get_app()
-except ValueError:
-    firebase_admin.initialize_app()
+_db_lock = threading.Lock()
+
+
+def _registry_enabled() -> bool:
+    """Whether the MCP tool registry is enabled.
+
+    Defaults to FIREBASE_ENABLED for Cloud Run deploy parity.
+    """
+    v = os.getenv("MCP_REGISTRY_ENABLED")
+    if v is None:
+        v = os.getenv("FIREBASE_ENABLED", "false")
+    return v.lower() == "true"
 
 
 class ToolRegistry:
     """Registry for managing generated MCP tools."""
-    
+
     def __init__(self):
-        """Initialize tool registry."""
-        self.db = firestore.client()
+        """Initialize tool registry.
+
+        NOTE: This must remain side-effect free (no network/ADC).
+        """
+        self._db: Optional[Any] = None
+        self._db_init_error: Optional[Exception] = None
         self._cache: Dict[str, Dict[str, Any]] = {}
         self.collection_name = "mcp_tools"
-    
+
+    def _get_db(self) -> Any:
+        """Get (or initialize) the Firestore client.
+
+        Raises:
+            RuntimeError: If registry is disabled.
+            Exception: If Firestore initialization fails.
+        """
+        if self._db is not None:
+            return self._db
+
+        if not _registry_enabled():
+            raise RuntimeError(
+                "MCP registry is disabled (set MCP_REGISTRY_ENABLED=true or FIREBASE_ENABLED=true)."
+            )
+
+        if self._db_init_error is not None:
+            raise self._db_init_error
+
+        with _db_lock:
+            if self._db is not None:
+                return self._db
+            if self._db_init_error is not None:
+                raise self._db_init_error
+
+            try:
+                try:
+                    firebase_admin.get_app()
+                except ValueError:
+                    firebase_admin.initialize_app()
+
+                self._db = firestore.client()
+                return self._db
+            except Exception as e:
+                self._db_init_error = e
+                raise
     def register(
         self,
         tool_id: str,
@@ -64,7 +119,8 @@ class ToolRegistry:
         }
         
         # Save to Firestore
-        self.db.collection(self.collection_name).document(tool_id).set(tool_doc)
+        db = self._get_db()
+        db.collection(self.collection_name).document(tool_id).set(tool_doc)
         
         # Invalidate cache
         self._cache.pop(tool_id, None)
@@ -85,7 +141,8 @@ class ToolRegistry:
             return self._cache[tool_id]
         
         # Query Firestore
-        doc = self.db.collection(self.collection_name).document(tool_id).get()
+        db = self._get_db()
+        doc = db.collection(self.collection_name).document(tool_id).get()
         
         if doc.exists:
             tool_data = doc.to_dict()
@@ -108,8 +165,9 @@ class ToolRegistry:
         Returns:
             List of tool metadata
         """
+        db = self._get_db()
         query = (
-            self.db.collection(self.collection_name)
+            db.collection(self.collection_name)
             .where("status", "==", status)
             .order_by("created_at", direction=firestore.Query.DESCENDING)
             .limit(limit)
@@ -135,7 +193,8 @@ class ToolRegistry:
         """
         updates["updated_at"] = firestore.SERVER_TIMESTAMP
         
-        self.db.collection(self.collection_name).document(tool_id).update(updates)
+        db = self._get_db()
+        db.collection(self.collection_name).document(tool_id).update(updates)
         
         # Invalidate cache
         self._cache.pop(tool_id, None)
@@ -179,8 +238,9 @@ class ToolRegistry:
         Returns:
             Tool metadata or None if not found
         """
+        db = self._get_db()
         query = (
-            self.db.collection(self.collection_name)
+            db.collection(self.collection_name)
             .where("spec_hash", "==", spec_hash)
             .limit(1)
         )
@@ -204,7 +264,8 @@ class ToolRegistry:
         Returns:
             List of matching tools
         """
-        query = self.db.collection(self.collection_name).where("status", "==", "active")
+        db = self._get_db()
+        query = db.collection(self.collection_name).where("status", "==", "active")
         
         tools = []
         for doc in query.stream():

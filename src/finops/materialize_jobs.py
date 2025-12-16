@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from src.config import config
 import os
 
-client = bigquery.Client(project=config.PROJECT_ID_FINOPS)
 
 def materialize_daily_jobs():
     """
@@ -42,6 +41,7 @@ def materialize_daily_jobs():
     
     # Note: referenced_tables is complex in InfoSchema, simplified here.
     
+    client = bigquery.Client(project=config.PROJECT_ID_FINOPS)
     job = client.query(sql)
     job.result()
     print("Materialized bq_jobs_daily")

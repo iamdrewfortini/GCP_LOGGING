@@ -1,9 +1,22 @@
 import os
 import uuid
+import logging
+import threading
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
+
+logger = logging.getLogger(__name__)
+
+
+def _qdrant_enabled() -> bool:
+    """Whether Qdrant-backed features are enabled.
+
+    Defaults to disabled so CI/tests never depend on external Qdrant.
+    """
+    return os.getenv("ENABLE_VECTOR_SEARCH", "false").lower() == "true"
+
 
 class QdrantService:
     def __init__(self):
@@ -11,17 +24,28 @@ class QdrantService:
         self.api_key = os.getenv("QDRANT_API_KEY", None)
         self.client: Optional[QdrantClient] = None
         self.collection_name = "conversation_history"
-        self._connect()
+        self._connect_lock = threading.Lock()
 
-    def _connect(self):
-        try:
-            self.client = QdrantClient(url=self.url, api_key=self.api_key)
-        except Exception as e:
-            print(f"Failed to connect to Qdrant: {e}")
-            self.client = None
+    def _connect_if_needed(self) -> None:
+        if self.client is not None:
+            return
+
+        if not _qdrant_enabled():
+            return
+
+        with self._connect_lock:
+            if self.client is not None:
+                return
+
+            try:
+                self.client = QdrantClient(url=self.url, api_key=self.api_key)
+            except Exception as e:
+                logger.warning(f"Failed to connect to Qdrant: {e}")
+                self.client = None
 
     def ensure_collections(self):
         """Creates collections with hybrid search and tenant isolation support."""
+        self._connect_if_needed()
         if not self.client:
             return
 
@@ -58,12 +82,13 @@ class QdrantService:
                     field_name=field,
                     field_schema=models.PayloadSchemaType.KEYWORD if "id" in field or "role" in field else models.PayloadSchemaType.INTEGER
                 )
-            print(f"Created Qdrant collection: {self.collection_name}")
+            logger.info(f"Created Qdrant collection: {self.collection_name}")
 
     def upsert_memory(self, session_id: str, project_id: str, role: str, content: str, embedding: List[float], sparse_indices: List[int] = None, sparse_values: List[float] = None):
         """
         Stores a memory with strict hierarchical timestamping and tenant isolation.
         """
+        self._connect_if_needed()
         if not self.client:
             return
 
@@ -107,6 +132,7 @@ class QdrantService:
         """
         Performs a search filtered by tenant (project_id).
         """
+        self._connect_if_needed()
         if not self.client:
             return []
 
@@ -131,6 +157,7 @@ class QdrantService:
         )
 
     def get_collections(self):
+        self._connect_if_needed()
         if not self.client:
             return []
         return self.client.get_collections().collections

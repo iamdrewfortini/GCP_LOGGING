@@ -5,10 +5,20 @@ import time
 import logging
 import hashlib
 import pickle
+import threading
 from typing import Optional, Any, List, Dict
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+
+def _redis_enabled() -> bool:
+    """Whether Redis-backed features are enabled.
+
+    Defaults to disabled so CI/tests never depend on external Redis.
+    """
+    return os.getenv("ENABLE_REDIS", "false").lower() == "true"
+
 
 class RedisService:
     """Enhanced Redis service for caching, queuing, streaming."""
@@ -19,43 +29,60 @@ class RedisService:
         self.username = os.getenv("REDIS_USERNAME", None)
         self.password = os.getenv("REDIS_PASSWORD", None)
         self.client: Optional[redis.Redis] = None
-        self._connect()
+        self._connect_lock = threading.Lock()
 
-    def _connect(self):
-        try:
-            self.client = redis.Redis(
-                host=self.host,
-                port=self.port,
-                username=self.username,
-                password=self.password,
-                decode_responses=True,  # Auto-decode bytes to strings for strings, but we'll handle binary
-                socket_timeout=5
-            )
-        except Exception as e:
-            print(f"Failed to connect to Redis: {e}")
-            self.client = None
+    def _connect_if_needed(self) -> None:
+        """Lazy-connect to Redis.
+
+        Must be safe at import time and in CI environments.
+        """
+        if self.client is not None:
+            return
+
+        if not _redis_enabled():
+            return
+
+        with self._connect_lock:
+            if self.client is not None:
+                return
+
+            try:
+                self.client = redis.Redis(
+                    host=self.host,
+                    port=self.port,
+                    username=self.username,
+                    password=self.password,
+                    decode_responses=True,  # Auto-decode bytes to strings for strings, but we'll handle binary
+                    socket_timeout=5,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to connect to Redis: {e}")
+                self.client = None
 
     def ping(self) -> bool:
+        self._connect_if_needed()
         if not self.client:
-            self._connect()
+            return False
         try:
-            return self.client.ping()
+            return bool(self.client.ping())
         except Exception:
             return False
 
     def enqueue(self, queue_name: str, payload: dict) -> bool:
         """Push a job to a Redis List queue."""
+        self._connect_if_needed()
         if not self.client:
             return False
         try:
             self.client.rpush(queue_name, json.dumps(payload))
             return True
         except Exception as e:
-            print(f"Redis enqueue error: {e}")
+            logger.error(f"Redis enqueue error: {e}")
             return False
 
     def dequeue(self, queue_name: str, timeout: int = 5) -> Optional[dict]:
         """Blocking pop from a Redis List queue."""
+        self._connect_if_needed()
         if not self.client:
             return None
         try:
@@ -65,18 +92,20 @@ class RedisService:
                 return json.loads(result[1])
             return None
         except Exception as e:
-            print(f"Redis dequeue error: {e}")
+            logger.error(f"Redis dequeue error: {e}")
             return None
             
     def set_cache(self, key: str, value: Any, ttl: int = 3600):
+        self._connect_if_needed()
         if not self.client:
             return
         try:
             self.client.setex(key, ttl, json.dumps(value))
         except Exception as e:
-            print(f"Redis set_cache error: {e}")
+            logger.error(f"Redis set_cache error: {e}")
 
     def get_cache(self, key: str) -> Optional[Any]:
+        self._connect_if_needed()
         if not self.client:
             return None
         try:
@@ -108,6 +137,7 @@ class RedisService:
     # Enhanced caching with hashing and serialization
     def cache_set_hashed(self, key: str, value: Any, ttl: int = 3600):
         """Set cache with hashed key and proper serialization."""
+        self._connect_if_needed()
         if self.client:
             hashed_key = self._hash_key(key)
             serialized = self._serialize(value)
@@ -115,6 +145,7 @@ class RedisService:
 
     def cache_get_hashed(self, key: str) -> Optional[Any]:
         """Get from hashed cache."""
+        self._connect_if_needed()
         if self.client:
             hashed_key = self._hash_key(key)
             data = self.client.get(hashed_key)
@@ -125,21 +156,23 @@ class RedisService:
     # Streaming methods
     def stream_add(self, stream_name: str, data: Dict[str, Any]) -> Optional[str]:
         """Add to stream."""
+        self._connect_if_needed()
         if self.client:
             try:
                 return self.client.xadd(stream_name, data)
             except Exception as e:
-                print(f"Stream add error: {e}")
+                logger.error(f"Stream add error: {e}")
         return None
 
     def stream_read(self, stream_name: str, last_id: str = '0', count: int = 10) -> List[Dict[str, Any]]:
         """Read from stream."""
+        self._connect_if_needed()
         if self.client:
             try:
                 entries = self.client.xread({stream_name: last_id}, count=count, block=1000)
                 return entries
             except Exception as e:
-                print(f"Stream read error: {e}")
+                logger.error(f"Stream read error: {e}")
         return []
 
     # Pipeline specific caching
@@ -165,6 +198,7 @@ class RedisService:
 
     def set_checkpoint(self, table: str, offset: int, total: int = 0) -> bool:
         """Store checkpoint for a table's embedding progress."""
+        self._connect_if_needed()
         if not self.client:
             return False
         try:
@@ -182,6 +216,7 @@ class RedisService:
 
     def get_checkpoint(self, table: str) -> Optional[Dict]:
         """Get checkpoint for a table."""
+        self._connect_if_needed()
         if not self.client:
             return None
         try:
@@ -196,6 +231,7 @@ class RedisService:
 
     def get_all_checkpoints(self) -> Dict[str, Dict]:
         """Get all table checkpoints."""
+        self._connect_if_needed()
         if not self.client:
             return {}
         try:
@@ -218,6 +254,7 @@ class RedisService:
 
     def set_global_checkpoint(self, tables_completed: int, total_embedded: int) -> bool:
         """Store global embedding progress."""
+        self._connect_if_needed()
         if not self.client:
             return False
         try:
@@ -234,6 +271,7 @@ class RedisService:
 
     def get_global_checkpoint(self) -> Optional[Dict]:
         """Get global embedding progress."""
+        self._connect_if_needed()
         if not self.client:
             return None
         try:
@@ -247,6 +285,7 @@ class RedisService:
 
     def delete_checkpoint(self, table: str) -> bool:
         """Delete a table's checkpoint."""
+        self._connect_if_needed()
         if not self.client:
             return False
         try:
@@ -258,6 +297,7 @@ class RedisService:
 
     def reset_all_checkpoints(self) -> int:
         """Delete all checkpoints. Returns count of deleted keys."""
+        self._connect_if_needed()
         if not self.client:
             return 0
         try:
@@ -280,6 +320,7 @@ class RedisService:
 
     def record_latency(self, service: str, latency_ms: float, max_samples: int = 100) -> bool:
         """Record a latency sample for a service (ollama, qdrant)."""
+        self._connect_if_needed()
         if not self.client:
             return False
         try:
@@ -293,6 +334,7 @@ class RedisService:
 
     def get_latency_stats(self, service: str) -> Dict:
         """Get latency statistics for a service."""
+        self._connect_if_needed()
         if not self.client:
             return {"avg": 0, "min": 0, "max": 0, "samples": 0}
         try:
@@ -313,6 +355,7 @@ class RedisService:
 
     def increment_error_count(self, service: str, window_seconds: int = 300) -> int:
         """Increment error count for a service with auto-expire."""
+        self._connect_if_needed()
         if not self.client:
             return 0
         try:
@@ -326,6 +369,7 @@ class RedisService:
 
     def get_error_count(self, service: str) -> int:
         """Get current error count for a service."""
+        self._connect_if_needed()
         if not self.client:
             return 0
         try:
@@ -338,6 +382,7 @@ class RedisService:
 
     def reset_error_count(self, service: str) -> bool:
         """Reset error count for a service."""
+        self._connect_if_needed()
         if not self.client:
             return False
         try:
@@ -349,6 +394,7 @@ class RedisService:
 
     def set_optimal_batch_sizes(self, embed_size: int, upsert_size: int) -> bool:
         """Store optimal batch sizes determined by auto-tuner."""
+        self._connect_if_needed()
         if not self.client:
             return False
         try:
@@ -365,6 +411,7 @@ class RedisService:
 
     def get_optimal_batch_sizes(self) -> Dict:
         """Get optimal batch sizes."""
+        self._connect_if_needed()
         if not self.client:
             return {"embed": 10, "upsert": 20}  # Defaults
         try:
@@ -382,6 +429,7 @@ class RedisService:
 
     def queue_length(self, queue_name: str) -> int:
         """Get the length of a queue."""
+        self._connect_if_needed()
         if not self.client:
             return 0
         try:
@@ -392,6 +440,7 @@ class RedisService:
 
     def peek_queue(self, queue_name: str, count: int = 10) -> List[Dict]:
         """Peek at items in a queue without removing them."""
+        self._connect_if_needed()
         if not self.client:
             return []
         try:
@@ -403,6 +452,7 @@ class RedisService:
 
     def move_to_failed(self, queue_name: str, job: Dict, error: str) -> bool:
         """Move a failed job to the dead letter queue."""
+        self._connect_if_needed()
         if not self.client:
             return False
         try:
@@ -417,6 +467,7 @@ class RedisService:
 
     def retry_failed_jobs(self, target_queue: str, count: int = 10) -> int:
         """Move failed jobs back to processing queue."""
+        self._connect_if_needed()
         if not self.client:
             return 0
         try:
@@ -438,6 +489,7 @@ class RedisService:
 
     def clear_queue(self, queue_name: str) -> int:
         """Clear all items from a queue."""
+        self._connect_if_needed()
         if not self.client:
             return 0
         try:

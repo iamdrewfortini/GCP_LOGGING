@@ -1,20 +1,37 @@
-"""
-Firebase service for Firestore and Realtime Database integration.
+"""Firebase service for Firestore and Realtime Database integration.
 
 Uses Firestore for session/query persistence and optional Realtime DB for updates.
+
+IMPORTANT: Do not initialize Firebase/Firestore at import time.
+- CI environments may not have ADC.
+- Import-time side effects can break pytest collection.
 """
+
+from __future__ import annotations
 
 import os
 import json
 import logging
+import threading
 import uuid
 from datetime import datetime
 from typing import Optional, Any, Dict, List
+
 import firebase_admin
 from firebase_admin import credentials, db, firestore
+
 from src.services.redis_service import RedisService
 
 logger = logging.getLogger(__name__)
+
+
+def _firebase_enabled() -> bool:
+    """Whether Firebase is enabled for this process.
+
+    Defaults to disabled so CI/tests never depend on ADC.
+    """
+    return os.getenv("FIREBASE_ENABLED", "false").lower() == "true"
+
 
 class FirebaseService:
     """Firebase service with Firestore for persistence and optional Realtime DB."""
@@ -24,54 +41,81 @@ class FirebaseService:
         self.app = None
         self.db_ref = None
         self.firestore_db = None
-        self.enabled = False
-        self._init_firebase()
 
-    def _init_firebase(self):
-        """Initialize Firebase app."""
-        try:
-            # Skip if already initialized
-            if firebase_admin._apps:
-                self.app = firebase_admin.get_app()
+        self._lock = threading.Lock()
+        self._init_error: Optional[Exception] = None
+
+    def _ensure_initialized(self) -> None:
+        """Ensure Firebase app + Firestore client are initialized.
+
+        Safe to call repeatedly.
+        """
+        if self.firestore_db is not None:
+            return
+
+        if not _firebase_enabled():
+            return
+
+        if self._init_error is not None:
+            return
+
+        with self._lock:
+            if self.firestore_db is not None:
+                return
+            if self._init_error is not None:
+                return
+
+            try:
+                # Reuse existing app if already initialized elsewhere.
+                try:
+                    self.app = firebase_admin.get_app()
+                except ValueError:
+                    cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH")
+                    project_id = os.getenv(
+                        "PROJECT_ID",
+                        os.getenv("GCP_PROJECT_ID", "diatonic-ai-gcp"),
+                    )
+
+                    if cred_path:
+                        cred = credentials.Certificate(cred_path)
+                    else:
+                        cred = credentials.ApplicationDefault()
+
+                    db_url = os.getenv("FIREBASE_DATABASE_URL")
+                    options = {"projectId": project_id}
+                    if db_url:
+                        options["databaseURL"] = db_url
+
+                    self.app = firebase_admin.initialize_app(cred, options)
+
+                # Initialize Firestore
                 self.firestore_db = firestore.client()
-                self.enabled = True
+
+                # Initialize Realtime DB reference if configured
                 try:
                     self.db_ref = db.reference()
                 except Exception:
-                    pass  # DB not configured, that's ok
-                logger.info("Firebase already initialized")
-                return
+                    self.db_ref = None
 
-            cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH")
-            project_id = os.getenv("PROJECT_ID", os.getenv("GCP_PROJECT_ID", "diatonic-ai-gcp"))
+                logger.info("Firebase initialized")
 
-            if cred_path:
-                # Use explicit credentials file (local dev)
-                cred = credentials.Certificate(cred_path)
-            else:
-                # Use Application Default Credentials (Cloud Run)
-                cred = credentials.ApplicationDefault()
+            except Exception as e:
+                self._init_error = e
+                logger.warning(f"Firebase init failed: {e}")
+                self.firestore_db = None
+                self.db_ref = None
 
-            db_url = os.getenv("FIREBASE_DATABASE_URL")
-            options = {'projectId': project_id}
-            if db_url:
-                options['databaseURL'] = db_url
-
-            self.app = firebase_admin.initialize_app(cred, options)
-
-            # Initialize Firestore
-            self.firestore_db = firestore.client()
-            self.enabled = True
-
-            if db_url:
-                self.db_ref = db.reference()
-
-            logger.info(f"Firebase initialized for project: {project_id}")
-        except Exception as e:
-            logger.error(f"Firebase init error: {e}")
+    @property
+    def enabled(self) -> bool:
+        """Whether Firebase is enabled and available."""
+        if not _firebase_enabled():
+            return False
+        self._ensure_initialized()
+        return self.firestore_db is not None
 
     def set_realtime_data(self, path: str, data: Any, use_cache: bool = True):
         """Set data in Firebase realtime DB, cache in Redis."""
+        self._ensure_initialized()
         if self.db_ref:
             try:
                 self.db_ref.child(path).set(data)
@@ -83,6 +127,7 @@ class FirebaseService:
 
     def get_realtime_data(self, path: str, use_cache: bool = True) -> Optional[Any]:
         """Get data from cache first, then Firebase."""
+        self._ensure_initialized()
         if use_cache:
             cached = self.redis.cache_get_hashed(f"firebase:{path}")
             if cached:
@@ -99,6 +144,7 @@ class FirebaseService:
 
     def stream_realtime_updates(self, path: str, callback):
         """Listen for realtime updates."""
+        self._ensure_initialized()
         if self.db_ref:
             def listener(event):
                 callback(event.data)
@@ -124,6 +170,7 @@ class FirebaseService:
 
     def create_session(self, user_id: str, title: str = "New Session") -> str:
         """Create a new chat session."""
+        self._ensure_initialized()
         if not self.firestore_db:
             raise RuntimeError("Firestore not initialized")
 
@@ -146,6 +193,7 @@ class FirebaseService:
 
     def list_sessions(self, user_id: str, status: str = "active", limit: int = 50) -> List[Dict[str, Any]]:
         """List user's sessions."""
+        self._ensure_initialized()
         if not self.firestore_db:
             return []
 
@@ -175,6 +223,7 @@ class FirebaseService:
 
     def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Get a session by ID."""
+        self._ensure_initialized()
         if not self.firestore_db:
             return None
 
@@ -200,6 +249,7 @@ class FirebaseService:
 
     def archive_session(self, session_id: str) -> bool:
         """Archive a session."""
+        self._ensure_initialized()
         if not self.firestore_db:
             return False
 
@@ -215,6 +265,7 @@ class FirebaseService:
 
     def add_message(self, session_id: str, role: str, content: str, metadata: Optional[Dict] = None) -> str:
         """Add a message to a session."""
+        self._ensure_initialized()
         if not self.firestore_db:
             raise RuntimeError("Firestore not initialized")
 
@@ -242,6 +293,7 @@ class FirebaseService:
 
     def get_session_messages(self, session_id: str, limit: int = 100) -> List[Dict[str, Any]]:
         """Get messages for a session."""
+        self._ensure_initialized()
         if not self.firestore_db:
             return []
 
@@ -271,6 +323,7 @@ class FirebaseService:
 
     def save_query(self, user_id: str, name: str, query_params: Dict[str, Any]) -> str:
         """Save a reusable query."""
+        self._ensure_initialized()
         if not self.firestore_db:
             raise RuntimeError("Firestore not initialized")
 
@@ -291,6 +344,7 @@ class FirebaseService:
 
     def list_saved_queries(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """List user's saved queries."""
+        self._ensure_initialized()
         if not self.firestore_db:
             return []
 

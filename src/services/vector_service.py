@@ -27,8 +27,9 @@ LOG_EMBEDDINGS_COLLECTION = "log_embeddings"
 CONVERSATION_HISTORY_COLLECTION = "conversation_history"
 
 # Feature flags
-ENABLE_VECTOR_SEARCH = os.getenv("ENABLE_VECTOR_SEARCH", "true").lower() == "true"
-ENABLE_LOG_EMBEDDINGS = os.getenv("ENABLE_LOG_EMBEDDINGS", "true").lower() == "true"
+# Default to disabled so CI/tests never depend on external services.
+ENABLE_VECTOR_SEARCH = os.getenv("ENABLE_VECTOR_SEARCH", "false").lower() == "true"
+ENABLE_LOG_EMBEDDINGS = os.getenv("ENABLE_LOG_EMBEDDINGS", "false").lower() == "true"
 
 
 @dataclass

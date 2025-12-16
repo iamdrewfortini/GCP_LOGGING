@@ -1,100 +1,143 @@
 import os
 import logging
+import threading
 from typing import List, Optional
-import vertexai
-from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
 
 from src.glass_pane.config import glass_config
 
 logger = logging.getLogger(__name__)
 
+
+def _vertex_enabled() -> bool:
+    """Whether Vertex AI calls are enabled.
+
+    Defaults to disabled so CI/tests never depend on Vertex/ADC.
+    """
+    return os.getenv("VERTEX_ENABLED", "false").lower() == "true"
+
+
 class EmbeddingService:
     def __init__(self):
+        # Config is safe to read at import; initialization must be lazy.
         self.project_id = glass_config.logs_project_id
-        # Default region to us-central1 if not set
         self.location = os.getenv("REGION", "us-central1")
-        # Using text-embedding-004 as the latest stable model, fallback to gecko if needed
         self.model_name = os.getenv("EMBEDDING_MODEL", "text-embedding-004")
-        self._model: Optional[TextEmbeddingModel] = None
-        self._init_vertex()
+        self.embedding_dim = int(os.getenv("EMBEDDING_DIM", "768"))
 
-    def _init_vertex(self):
-        try:
-            # Initialize Vertex AI SDK
-            vertexai.init(project=self.project_id, location=self.location)
-            self._model = TextEmbeddingModel.from_pretrained(self.model_name)
-            logger.info(f"Vertex AI Embedding Model '{self.model_name}' initialized for project '{self.project_id}'.")
-        except Exception as e:
-            logger.error(f"Failed to initialize Vertex AI: {e}")
-            self._model = None
+        self._model = None
+        self._init_error: Optional[Exception] = None
+        self._lock = threading.Lock()
+
+    def _init_vertex(self) -> None:
+        if self._model is not None:
+            return
+
+        if not _vertex_enabled():
+            return
+
+        with self._lock:
+            if self._model is not None:
+                return
+            if self._init_error is not None:
+                return
+
+            try:
+                import vertexai
+                from vertexai.language_models import TextEmbeddingModel
+
+                vertexai.init(project=self.project_id, location=self.location)
+                self._model = TextEmbeddingModel.from_pretrained(self.model_name)
+                logger.info(
+                    f"Vertex AI Embedding Model '{self.model_name}' initialized for project '{self.project_id}'."
+                )
+            except Exception as e:
+                self._init_error = e
+                logger.warning(f"Failed to initialize Vertex AI embeddings: {e}")
+                self._model = None
+
+    def _zero_vector(self) -> List[float]:
+        return [0.0] * self.embedding_dim
 
     def get_embedding(self, text: str) -> List[float]:
-        """
-        Generates an embedding for the given text using Vertex AI.
-        Returns a 768-dimensional vector (or whatever the model outputs).
-        """
-        if not self._model:
-            # Try to re-init if it failed previously (e.g. transient network issue at startup)
-            self._init_vertex()
-            if not self._model:
-                logger.error("Vertex AI model not available. Returning zero vector.")
-                return [0.0] * 768
+        """Generate an embedding for the given text.
 
+        This is designed to be safe in CI:
+        - If Vertex is disabled/unavailable, returns a zero vector.
+        """
         if not text or not text.strip():
-            logger.warning("Empty text provided for embedding.")
-            return [0.0] * 768
+            logger.debug("Empty text provided for embedding")
+            return self._zero_vector()
+
+        self._init_vertex()
+        if not self._model:
+            return self._zero_vector()
 
         try:
-            # Vertex AI expects a list of inputs. 
-            # task_type="SEMANTIC_SIMILARITY" is standard for vector search/clustering.
+            from vertexai.language_models import TextEmbeddingInput
+
             inputs = [TextEmbeddingInput(text, "SEMANTIC_SIMILARITY")]
             embeddings = self._model.get_embeddings(inputs)
-            
+
             if not embeddings:
-                logger.error("No embeddings returned from Vertex AI.")
-                return [0.0] * 768
-                
-            return embeddings[0].values
+                return self._zero_vector()
+
+            values = embeddings[0].values
+            if not values:
+                return self._zero_vector()
+
+            # Update dimension from actual response (optional, but keeps zero-vectors consistent).
+            self.embedding_dim = len(values)
+            return values
 
         except Exception as e:
-            logger.error(f"Error generating embedding with Vertex AI: {e}")
-            # Return zero vector to allow processing to continue, but data will be unsearchable
-            return [0.0] * 768
+            logger.warning(f"Error generating embedding with Vertex AI: {e}")
+            return self._zero_vector()
 
     def get_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
-        """
-        Batch generation for efficiency (up to 5 inputs per request usually for Vertex).
-        """
-        if not self._model:
-            self._init_vertex()
-            if not self._model:
-                return [[0.0] * 768 for _ in texts]
+        """Batch embedding generation.
 
-        valid_texts = [t for t in texts if t and t.strip()]
-        if not valid_texts:
-            return [[0.0] * 768 for _ in texts]
+        Returns a list of vectors aligned to `texts`.
+        """
+        if not texts:
+            return []
+
+        self._init_vertex()
+        if not self._model:
+            return [self._zero_vector() for _ in texts]
+
+        # Build inputs for valid texts, keep index mapping.
+        valid_inputs = []
+        valid_indices = []
+        for idx, t in enumerate(texts):
+            if t and t.strip():
+                valid_indices.append(idx)
+                valid_inputs.append(t)
+
+        # Default all outputs to zeros.
+        out: List[List[float]] = [self._zero_vector() for _ in texts]
+        if not valid_inputs:
+            return out
 
         try:
-            # Vertex AI batch limit is often 5 or 250 tokens. 
-            # We'll just pass the list and let the SDK/API handle (or chunk if we were fancy).
-            # For now, simplistic implementation.
-            inputs = [TextEmbeddingInput(t, "SEMANTIC_SIMILARITY") for t in texts]
-            # Note: get_embeddings accepts a list. 
-            # If the list is too long, this might fail. 
-            # A real production implementation should chunk this list into batches of 5.
-            
+            from vertexai.language_models import TextEmbeddingInput
+
             BATCH_SIZE = 5
-            all_embeddings = []
-            
-            for i in range(0, len(inputs), BATCH_SIZE):
-                batch = inputs[i : i + BATCH_SIZE]
-                results = self._model.get_embeddings(batch)
-                all_embeddings.extend([r.values for r in results])
-                
-            return all_embeddings
+            cursor = 0
+            for start in range(0, len(valid_inputs), BATCH_SIZE):
+                batch_texts = valid_inputs[start : start + BATCH_SIZE]
+                batch_inputs = [TextEmbeddingInput(t, "SEMANTIC_SIMILARITY") for t in batch_texts]
+                results = self._model.get_embeddings(batch_inputs)
+
+                for r in results:
+                    if cursor >= len(valid_indices):
+                        break
+                    out[valid_indices[cursor]] = r.values or self._zero_vector()
+                    cursor += 1
+
+            return out
 
         except Exception as e:
-            logger.error(f"Error generating batch embeddings: {e}")
-            return [[0.0] * 768 for _ in texts]
+            logger.warning(f"Error generating batch embeddings: {e}")
+            return [self._zero_vector() for _ in texts]
 
 embedding_service = EmbeddingService()

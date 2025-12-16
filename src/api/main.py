@@ -36,7 +36,10 @@ app = FastAPI(
 # Startup Event
 @app.on_event("startup")
 async def startup_event():
-    # Ensure Qdrant collections exist
+    # Ensure Qdrant collections exist (only when enabled).
+    if os.getenv("ENABLE_VECTOR_SEARCH", "false").lower() != "true":
+        return
+
     try:
         qdrant_service.ensure_collections()
         print("Qdrant collections verified.")

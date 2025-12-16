@@ -19,10 +19,13 @@ from dataclasses import dataclass, asdict
 logger = logging.getLogger(__name__)
 
 # Feature flags
+# Keep dual-write logic enabled by default for realistic unit testing.
+# External services (Pub/Sub/Firebase) are still guarded by their own enablement.
 ENABLE_DUAL_WRITE = os.getenv("ENABLE_DUAL_WRITE", "true").lower() == "true"
 ENABLE_FIRESTORE_WRITE = os.getenv("ENABLE_FIRESTORE_WRITE", "true").lower() == "true"
 ENABLE_BQ_WRITE = os.getenv("ENABLE_BQ_WRITE", "true").lower() == "true"
-ENABLE_PUBSUB = os.getenv("ENABLE_PUBSUB", "true").lower() == "true"
+# Pub/Sub client creation requires ADC; keep opt-in by default.
+ENABLE_PUBSUB = os.getenv("ENABLE_PUBSUB", "false").lower() == "true"
 
 # Pub/Sub configuration
 PUBSUB_PROJECT = os.getenv("PROJECT_ID", "diatonic-ai-gcp")
