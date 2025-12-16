@@ -7,24 +7,81 @@ Phase 3, Task 3.2: Checkpoint Node
 """
 
 import logging
+import os
+import threading
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
+
 import firebase_admin
 from firebase_admin import firestore
+
 from src.agent.state import AgentState
 from src.agent.schemas import CheckpointMetadata
-from src.config import config
 
 logger = logging.getLogger(__name__)
 
-# Initialize Firebase if not already initialized
-try:
-    firebase_admin.get_app()
-except ValueError:
-    firebase_admin.initialize_app()
+# NOTE:
+# Do NOT initialize Firebase/Firestore at import time.
+# - GitHub Actions runners (and many local dev environments) do not have ADC.
+# - Import-time side effects break pytest collection.
+# We lazily create the client when checkpointing is actually used.
 
-# Initialize Firestore client
-db = firestore.client()
+db: Optional[Any] = None
+_db_init_error: Optional[Exception] = None
+_db_lock = threading.Lock()
+
+
+def _checkpoints_enabled() -> bool:
+    """Whether checkpoint persistence is enabled.
+
+    Defaults to FIREBASE_ENABLED to align with the Cloud Run deploy config.
+    """
+    v = os.getenv("CHECKPOINTS_ENABLED")
+    if v is None:
+        v = os.getenv("FIREBASE_ENABLED", "false")
+    return v.lower() == "true"
+
+
+def get_firestore_db() -> Any:
+    """Get a Firestore client for checkpoint persistence.
+
+    Raises:
+        RuntimeError: if checkpoints are disabled.
+        Exception: if Firestore can't be initialized.
+    """
+    global db, _db_init_error
+
+    if db is not None:
+        return db
+
+    if not _checkpoints_enabled():
+        raise RuntimeError(
+            "Checkpointing is disabled (set CHECKPOINTS_ENABLED=true or FIREBASE_ENABLED=true)."
+        )
+
+    # Prevent repeated expensive/failed init attempts.
+    if _db_init_error is not None:
+        raise _db_init_error
+
+    with _db_lock:
+        if db is not None:
+            return db
+        if _db_init_error is not None:
+            raise _db_init_error
+
+        try:
+            # Initialize Firebase if not already initialized.
+            try:
+                firebase_admin.get_app()
+            except ValueError:
+                firebase_admin.initialize_app()
+
+            db = firestore.client()
+            return db
+        except Exception as e:
+            # Cache the init error so subsequent calls fail fast and consistently.
+            _db_init_error = e
+            raise
 
 
 def save_checkpoint(
@@ -105,7 +162,8 @@ def save_checkpoint(
 
     try:
         # Save to Firestore
-        doc_ref = db.collection("checkpoints").document(checkpoint_id)
+        client = get_firestore_db()
+        doc_ref = client.collection("checkpoints").document(checkpoint_id)
         doc_ref.set(checkpoint_doc)
 
         logger.info(
@@ -134,7 +192,8 @@ def load_checkpoint(checkpoint_id: str) -> Optional[Dict[str, Any]]:
         Exception: If checkpoint load fails
     """
     try:
-        doc_ref = db.collection("checkpoints").document(checkpoint_id)
+        client = get_firestore_db()
+        doc_ref = client.collection("checkpoints").document(checkpoint_id)
         doc = doc_ref.get()
 
         if not doc.exists:
@@ -201,8 +260,9 @@ def list_checkpoints_for_run(run_id: str, limit: int = 10) -> list[Dict[str, Any
         List of checkpoint documents
     """
     try:
+        client = get_firestore_db()
         query = (
-            db.collection("checkpoints")
+            client.collection("checkpoints")
             .where("run_id", "==", run_id)
             .order_by("created_at", direction=firestore.Query.DESCENDING)
             .limit(limit)
@@ -231,7 +291,8 @@ def delete_checkpoint(checkpoint_id: str) -> bool:
         True if deleted, False otherwise
     """
     try:
-        doc_ref = db.collection("checkpoints").document(checkpoint_id)
+        client = get_firestore_db()
+        doc_ref = client.collection("checkpoints").document(checkpoint_id)
         doc_ref.delete()
         logger.info(f"Checkpoint deleted: {checkpoint_id}")
         return True
