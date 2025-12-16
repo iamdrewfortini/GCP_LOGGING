@@ -5,23 +5,16 @@ Executes generated tools with safety validation and audit logging.
 Phase 4, Task 4.3: ToolRuntime with safety checks
 """
 
+import logging
 import re
 import time
 import uuid
-from typing import Dict, Any, Callable, List
 from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List, Optional
+
 from google.cloud import bigquery
-import firebase_admin
-from firebase_admin import firestore
-import logging
 
 logger = logging.getLogger(__name__)
-
-# Initialize Firebase if not already initialized
-try:
-    firebase_admin.get_app()
-except ValueError:
-    firebase_admin.initialize_app()
 
 
 def generate_id() -> str:
@@ -30,14 +23,21 @@ def generate_id() -> str:
 
 
 class ToolRuntime:
-    """Runtime for executing generated tools with safety checks."""
-    
+    """Runtime for executing generated tools with safety checks.
+
+    NOTE: This class must be safe to import and instantiate in unit tests.
+    Do not create Google Cloud clients (BigQuery/Firestore/etc.) at import time
+    or in __init__.
+    """
+
     def __init__(
         self,
         tool_id: str,
         version: str,
         safety_config: Dict[str, Any],
-        audit_config: Dict[str, Any]
+        audit_config: Dict[str, Any],
+        *,
+        bq_client: Optional[bigquery.Client] = None,
     ):
         """Initialize tool runtime.
         
@@ -51,10 +51,9 @@ class ToolRuntime:
         self.version = version
         self.safety = safety_config
         self.audit = audit_config
-        
-        # Initialize clients
-        self.db = firestore.client()
-        self.bq = bigquery.Client()
+
+        # Lazy-init clients only when needed (e.g., audit logging).
+        self._bq: Optional[bigquery.Client] = bq_client
     
     def execute(
         self,
@@ -218,6 +217,22 @@ class ToolRuntime:
         
         return output_data
     
+    def _get_bq_client(self) -> Optional[bigquery.Client]:
+        """Return a BigQuery client if audit logging is enabled.
+
+        We only construct this lazily to keep unit tests fast and to avoid
+        requiring ADC during import/collection in CI.
+        """
+        if self._bq is not None:
+            return self._bq
+
+        try:
+            self._bq = bigquery.Client()
+            return self._bq
+        except Exception as e:
+            logger.warning(f"BigQuery client init failed (audit disabled): {e}")
+            return None
+
     def _log_invocation(
         self,
         invocation_id: str,
@@ -265,11 +280,15 @@ class ToolRuntime:
         if self.audit.get("log_output") and output_data:
             log_entry["output_summary"] = str(output_data)[:500]
         
+        bq = self._get_bq_client()
+        if bq is None:
+            return
+
         # Insert to BigQuery
         try:
-            table_id = f"{self.bq.project}.{self.audit['log_destination']}"
-            errors = self.bq.insert_rows_json(table_id, [log_entry])
-            
+            table_id = f"{bq.project}.{self.audit['log_destination']}"
+            errors = bq.insert_rows_json(table_id, [log_entry])
+
             if errors:
                 logger.error(f"Failed to log invocation: {errors}")
         except Exception as e:
