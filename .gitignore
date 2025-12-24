@@ -72,3 +72,9 @@ ui-debug.log
 *.backup
 
 .SECRETS/
+
+# Local secrets / logs / analysis artifacts
+keys/
+*.log
+validation_results_*.txt
+analysis/*.json
