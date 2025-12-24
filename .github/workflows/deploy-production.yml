@@ -72,7 +72,7 @@ jobs:
 
       - name: Configure Docker for GCR
         run: |
-          gcloud auth configure-docker
+          gcloud auth configure-docker gcr.io --quiet
 
       - name: Setup Secret Manager secrets
         run: |
