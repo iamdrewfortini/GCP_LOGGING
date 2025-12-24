@@ -1,0 +1,15 @@
+project_id: diatonic-ai-gcp
+region: us-central1
+frontend:
+  dev_port: 5173
+emulators:
+  auth: 9099
+  firestore: 8181
+  storage: 9199
+  functions: 5001
+  pubsub: 8085
+  database: 9000
+  hosting: 5000
+  ui: 4000
+  hub: 4400
+  logging: 4500

@@ -1,13 +1,21 @@
-from google.cloud import bigquery
-from google.api_core.exceptions import GoogleAPICallError
+from __future__ import annotations
+
 from typing import List, Dict, Any, Optional
+
 from src.config import config
 from src.agent.tools.contracts import BQDryRunInput, BQDryRunOutput, BQQueryInput, BQQueryOutput
+
+try:
+    from google.cloud import bigquery
+except ModuleNotFoundError:  # Optional dependency for local unit tests
+    bigquery = None
 
 _client = None
 
 def get_client():
     global _client
+    if bigquery is None:
+        raise RuntimeError("Missing optional dependency 'google-cloud-bigquery'")
     if _client is None:
         _client = bigquery.Client(project=config.PROJECT_ID_AGENT, location=config.BQ_LOCATION)
     return _client

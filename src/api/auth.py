@@ -2,8 +2,12 @@ from typing import Optional
 import os
 import logging
 
-import firebase_admin
-from firebase_admin import auth
+try:
+    import firebase_admin
+    from firebase_admin import auth
+except ModuleNotFoundError:  # Optional dependency for some dev/test environments
+    firebase_admin = None  # type: ignore
+    auth = None  # type: ignore
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -15,6 +19,9 @@ security = HTTPBearer(auto_error=False)
 
 def _firebase_auth_enabled() -> bool:
     # Default disabled so CI/tests don't require ADC.
+    # Also disable if Firebase Admin SDK isn't installed.
+    if firebase_admin is None or auth is None:
+        return False
     return os.getenv("FIREBASE_ENABLED", "false").lower() == "true"
 
 
@@ -23,6 +30,9 @@ def _ensure_firebase_app_initialized() -> None:
 
     Firebase Admin uses ADC by default; only call this when FIREBASE_ENABLED=true.
     """
+    if firebase_admin is None:
+        raise RuntimeError("Firebase Admin SDK not installed")
+
     try:
         firebase_admin.get_app()
     except ValueError:

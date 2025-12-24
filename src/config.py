@@ -1,10 +1,25 @@
 import os
 
 
+def _default_gcp_project() -> str:
+    # Prefer common runtime env vars (Cloud Run/GCE) when explicit vars aren't set.
+    return (
+        os.getenv("PROJECT_ID")
+        or os.getenv("GOOGLE_CLOUD_PROJECT")
+        or os.getenv("GCP_PROJECT_ID")
+        or "diatonic-ai-gcp"
+    )
+
+
 class Config:
-    PROJECT_ID_AGENT = os.getenv("PROJECT_ID_AGENT", "your-agent-project")
-    PROJECT_ID_LOGS = os.getenv("PROJECT_ID_LOGS", "your-logs-project")
-    PROJECT_ID_FINOPS = os.getenv("PROJECT_ID_FINOPS", "your-finops-project")
+    # Agent project: where Vertex AI + agent analytics live.
+    PROJECT_ID_AGENT = os.getenv("PROJECT_ID_AGENT") or _default_gcp_project()
+
+    # Logs project: where central logging BigQuery datasets live.
+    PROJECT_ID_LOGS = os.getenv("PROJECT_ID_LOGS") or _default_gcp_project()
+
+    # FinOps project: where billing exports/datasets live.
+    PROJECT_ID_FINOPS = os.getenv("PROJECT_ID_FINOPS") or _default_gcp_project()
 
     # BigQuery location (e.g. US, EU)
     BQ_LOCATION = os.getenv("BQ_LOCATION", "US")

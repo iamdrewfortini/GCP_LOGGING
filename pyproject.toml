@@ -1,0 +1,19 @@
+[project]
+name = "gcl-dev"
+version = "0.1.0"
+description = "Wix-style local dev CLI for Firebase emulators and frontend in GCP_LOGGING"
+authors = [{name = "Diatonic AI"}]
+requires-python = ">=3.9"
+dependencies = ["pyyaml>=6.0"]
+readme = "README.md"
+
+[project.scripts]
+gcl = "gcl_cli.cli:main"
+
+[build-system]
+requires = ["setuptools>=65"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+packages = ["gcl_cli"]

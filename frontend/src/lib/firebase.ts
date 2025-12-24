@@ -21,9 +21,22 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
 }
 
+const firebaseDebug = import.meta.env.DEV || import.meta.env.VITE_FIREBASE_DEBUG === "true"
+
+function isLocalhost(): boolean {
+  if (typeof window === "undefined") return false
+  return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+}
+
 // Emulator configuration
+// Rules:
+// - If VITE_USE_FIREBASE_EMULATORS is explicitly set, honor it.
+// - Otherwise, default to emulators in local dev on localhost to reduce accidental prod writes.
+const emulatorFlag = import.meta.env.VITE_USE_FIREBASE_EMULATORS
 const emulatorConfig = {
-  useEmulators: import.meta.env.VITE_USE_FIREBASE_EMULATORS === "true",
+  useEmulators:
+    emulatorFlag === "true" ||
+    (emulatorFlag !== "false" && import.meta.env.DEV && isLocalhost()),
   authHost: import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST || "localhost",
   authPort: parseInt(import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_PORT || "9099"),
   firestoreHost: import.meta.env.VITE_FIREBASE_FIRESTORE_EMULATOR_HOST || "localhost",
@@ -37,7 +50,9 @@ let emulatorsConnected = false
 function initializeFirebase(): FirebaseApp {
   if (getApps().length === 0) {
     const app = initializeApp(firebaseConfig)
-    console.log("🔥 Firebase initialized with project:", firebaseConfig.projectId)
+    if (firebaseDebug) {
+      console.log("🔥 Firebase initialized with project:", firebaseConfig.projectId)
+    }
     return app
   }
   return getApps()[0]
@@ -48,32 +63,46 @@ function connectEmulators(auth: Auth, db: Firestore, storage: FirebaseStorage): 
     return
   }
 
-  console.log("🔥 Connecting to Firebase emulators...")
+  if (firebaseDebug) {
+    console.log("🔥 Connecting to Firebase emulators...")
+  }
 
   // Connect Auth emulator
   try {
     connectAuthEmulator(auth, `http://${emulatorConfig.authHost}:${emulatorConfig.authPort}`, {
       disableWarnings: true,
     })
-    console.log(`  ✓ Auth emulator: ${emulatorConfig.authHost}:${emulatorConfig.authPort}`)
+    if (firebaseDebug) {
+      console.log(`  ✓ Auth emulator: ${emulatorConfig.authHost}:${emulatorConfig.authPort}`)
+    }
   } catch (e) {
-    console.warn("  ⚠ Auth emulator already connected or error:", e)
+    if (firebaseDebug) {
+      console.warn("  ⚠ Auth emulator already connected or error:", e)
+    }
   }
 
   // Connect Firestore emulator
   try {
     connectFirestoreEmulator(db, emulatorConfig.firestoreHost, emulatorConfig.firestorePort)
-    console.log(`  ✓ Firestore emulator: ${emulatorConfig.firestoreHost}:${emulatorConfig.firestorePort}`)
+    if (firebaseDebug) {
+      console.log(`  ✓ Firestore emulator: ${emulatorConfig.firestoreHost}:${emulatorConfig.firestorePort}`)
+    }
   } catch (e) {
-    console.warn("  ⚠ Firestore emulator already connected or error:", e)
+    if (firebaseDebug) {
+      console.warn("  ⚠ Firestore emulator already connected or error:", e)
+    }
   }
 
   // Connect Storage emulator
   try {
     connectStorageEmulator(storage, emulatorConfig.storageHost, emulatorConfig.storagePort)
-    console.log(`  ✓ Storage emulator: ${emulatorConfig.storageHost}:${emulatorConfig.storagePort}`)
+    if (firebaseDebug) {
+      console.log(`  ✓ Storage emulator: ${emulatorConfig.storageHost}:${emulatorConfig.storagePort}`)
+    }
   } catch (e) {
-    console.warn("  ⚠ Storage emulator already connected or error:", e)
+    if (firebaseDebug) {
+      console.warn("  ⚠ Storage emulator already connected or error:", e)
+    }
   }
 
   emulatorsConnected = true
@@ -89,7 +118,9 @@ export const storage = getStorage(app)
 if (emulatorConfig.useEmulators) {
   connectEmulators(auth, db, storage)
 } else {
-  console.log("🔥 Using production Firebase services")
+  if (firebaseDebug) {
+    console.log("🔥 Using production Firebase services")
+  }
 }
 
 // Export config for debugging

@@ -6,7 +6,25 @@ context window overflow in long conversations.
 
 from typing import List, Dict, Any
 from langchain_core.messages import BaseMessage
-import tiktoken
+
+try:
+    import tiktoken
+except ModuleNotFoundError:  # Optional dependency for some dev/test environments
+    tiktoken = None
+
+
+class _FallbackEncoding:
+    """Extremely rough tokenizer fallback.
+
+    This exists so local tests/utilities can run without tiktoken installed.
+    Token counts will be approximate.
+    """
+
+    name = "fallback"
+
+    def encode(self, text: str) -> List[str]:
+        # Split on whitespace as a minimal approximation.
+        return text.split()
 
 
 class TokenBudgetExceeded(Exception):
@@ -37,7 +55,15 @@ class TokenBudgetManager:
                        Note: Gemini 2.5 Flash supports 1M tokens, but we use
                        a conservative limit to allow for tool outputs and safety margin.
         """
-        self.encoding = tiktoken.encoding_for_model(model)
+        if tiktoken is None:
+            self.encoding = _FallbackEncoding()
+        else:
+            # Prefer model-specific encodings when available.
+            try:
+                self.encoding = tiktoken.encoding_for_model(model)
+            except Exception:
+                # Fallback to a common encoding.
+                self.encoding = tiktoken.get_encoding("cl100k_base")
         self.max_tokens = max_tokens
         self.tokens_used = 0
     

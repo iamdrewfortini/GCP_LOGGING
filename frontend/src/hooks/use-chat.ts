@@ -73,12 +73,18 @@ export function useChat() {
         }
 
         case "on_tool_end": {
-          const output = event.data.output as { content?: string; name?: string }
-          const toolName = output?.name
+          const output = event.data.output as { content?: string; name?: string } | unknown
+          const outputRec = (typeof output === "object" && output !== null ? (output as Record<string, unknown>) : null)
+
+          const toolName =
+            (typeof event.data.tool === "string" ? (event.data.tool as string) : undefined) ||
+            (outputRec && typeof outputRec.name === "string" ? (outputRec.name as string) : undefined)
+
+          const outputContent = outputRec && typeof outputRec.content === "string" ? (outputRec.content as string) : undefined
 
           if (toolName && toolCallsRef.current.has(toolName)) {
             const existingTool = toolCallsRef.current.get(toolName)!
-            existingTool.output = output?.content
+            existingTool.output = outputContent ?? output
             existingTool.status = "completed"
 
             setMessages((prev) =>
@@ -88,7 +94,7 @@ export function useChat() {
                       ...m,
                       toolCalls: m.toolCalls?.map((tc) =>
                         tc.tool === toolName
-                          ? { ...tc, output: output?.content, status: "completed" }
+                          ? { ...tc, output: outputContent ?? output, status: "completed" }
                           : tc
                       ),
                     }

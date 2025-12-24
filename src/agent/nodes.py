@@ -18,9 +18,10 @@ from src.agent.tools.definitions import (
     semantic_search_logs, find_similar_logs
 )
 from src.agent.tokenization import TokenBudgetManager, estimate_tool_output_tokens
-from langgraph.prebuilt import ToolNode
-from src.agent.persistence import persist_agent_run
-from src.agent.checkpoint import save_checkpoint
+try:
+    from langgraph.prebuilt import ToolNode
+except ModuleNotFoundError:  # Optional dependency for some dev/test environments
+    ToolNode = None  # type: ignore
 import json
 import logging
 
@@ -148,9 +149,21 @@ tools = [
     runbook_search_tool,
     repo_search_tool,
     create_view_tool,
-    dashboard_spec_tool
+    dashboard_spec_tool,
 ]
-llm = get_llm().bind_tools(tools)
+
+_bound_llm = None
+
+
+def get_bound_llm():
+    """Lazy init model binding.
+
+    Avoids import-time failures when optional Vertex/GenAI deps aren't installed.
+    """
+    global _bound_llm
+    if _bound_llm is None:
+        _bound_llm = get_llm().bind_tools(tools)
+    return _bound_llm
 
 # Enhanced system prompt that's more proactive and uses smart defaults
 SMART_AGENT_PROMPT = """You are an expert GCP Log Debugger AI assistant. You help users analyze logs, troubleshoot issues, and understand their infrastructure.
@@ -277,6 +290,7 @@ Goal: Understand the request and gather evidence immediately.
     manager = get_token_manager()
     track_message_tokens(manager, [sys_msg] + messages, "diagnose")
 
+    llm = get_bound_llm()
     res = llm.invoke([sys_msg] + messages)
 
     # Track output tokens
@@ -307,6 +321,7 @@ Goal: Confirm findings and dig deeper if needed.
     manager = get_token_manager()
     track_message_tokens(manager, [sys_msg] + messages, "verify")
 
+    llm = get_bound_llm()
     res = llm.invoke([sys_msg] + messages)
 
     # Track output tokens
@@ -338,6 +353,7 @@ Goal: Provide actionable recommendations and final report.
     manager = get_token_manager()
     track_message_tokens(manager, [sys_msg] + messages, "optimize")
 
+    llm = get_bound_llm()
     res = llm.invoke([sys_msg] + messages)
 
     # Track output tokens
@@ -356,6 +372,8 @@ def checkpoint_node(state: AgentState):
     Phase 3, Task 3.2: Checkpoint Node
     """
     try:
+        from src.agent.checkpoint import save_checkpoint
+
         # Save checkpoint
         metadata = save_checkpoint(state)
 
@@ -397,6 +415,8 @@ def persist_node(state: AgentState):
     if run_id:
         # Extract evidence from messages (simplification)
         # Ideally we'd parse tool outputs
+        from src.agent.persistence import persist_agent_run
+
         persist_agent_run(
             run_id=run_id,
             user_query=state.get("user_query", ""),
@@ -419,4 +439,4 @@ def persist_node(state: AgentState):
         "status": "completed",
     }
 
-tool_node = ToolNode(tools)
+tool_node = ToolNode(tools) if ToolNode is not None else None

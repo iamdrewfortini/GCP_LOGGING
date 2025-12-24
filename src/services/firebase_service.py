@@ -17,8 +17,14 @@ import uuid
 from datetime import datetime
 from typing import Optional, Any, Dict, List
 
-import firebase_admin
-from firebase_admin import credentials, db, firestore
+try:
+    import firebase_admin
+    from firebase_admin import credentials, db, firestore
+except ModuleNotFoundError:  # Optional dependency for some dev/test environments
+    firebase_admin = None  # type: ignore
+    credentials = None  # type: ignore
+    db = None  # type: ignore
+    firestore = None  # type: ignore
 
 from src.services.redis_service import RedisService
 
@@ -53,7 +59,12 @@ class FirebaseService:
         if self.firestore_db is not None:
             return
 
+        # If Firebase Admin SDK isn't installed, treat as disabled.
+        if firebase_admin is None:
+            return
+
         if not _firebase_enabled():
+            # Not an error; explicitly disabled via env.
             return
 
         if self._init_error is not None:
@@ -108,10 +119,26 @@ class FirebaseService:
     @property
     def enabled(self) -> bool:
         """Whether Firebase is enabled and available."""
+        if firebase_admin is None:
+            return False
         if not _firebase_enabled():
             return False
         self._ensure_initialized()
         return self.firestore_db is not None
+
+    @property
+    def realtime_enabled(self) -> bool:
+        """Whether Realtime DB is available."""
+        if not self.enabled:
+            return False
+        return self.db_ref is not None
+
+    @property
+    def init_error(self) -> Optional[str]:
+        """Returns initialization error text if initialization failed."""
+        if self._init_error:
+            return str(self._init_error)
+        return None
 
     def set_realtime_data(self, path: str, data: Any, use_cache: bool = True):
         """Set data in Firebase realtime DB, cache in Redis."""

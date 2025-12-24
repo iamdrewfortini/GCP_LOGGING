@@ -204,6 +204,13 @@ class LogDebuggerAgent:
         )
 ```
 
+### Step 4: Production chat persistence checklist
+
+- **Env vars (Cloud Run)**: `FIREBASE_ENABLED=true`, `ENABLE_FIRESTORE_WRITE=true`, `ENABLE_DUAL_WRITE=true`, `CHAT_ENABLE_REALTIME=true`, optional `CHAT_REQUIRE_FIRESTORE=true` to fail fast if Firestore is unavailable, `PROJECT_ID=diatonic-ai-gcp`, `FIREBASE_DATABASE_URL` (if using Realtime DB), `GOOGLE_APPLICATION_CREDENTIALS` (if not using Workload Identity).
+- **IAM for Cloud Run service account**: `roles/datastore.user`, `roles/bigquery.jobUser`, `roles/bigquery.dataViewer` (or dataset-level on `central_logging_v1`), `roles/pubsub.publisher` if cold path Pub/Sub is enabled.
+- **Creds**: Prefer Workload Identity; else mount a secret key file and point `GOOGLE_APPLICATION_CREDENTIALS` to it.
+- **Smoke test**: `POST /api/sessions` -> `POST /api/chat` -> confirm Firestore writes (`sessions/{id}`, `messages` subcollection) and SSE stream; verify Pub/Sub (if enabled) and BigQuery jobs succeed.
+
 ## Phase 3: Update Frontend (3 hours)
 
 ### Step 1: Include Design System CSS

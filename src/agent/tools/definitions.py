@@ -8,8 +8,6 @@ import re
 from src.agent.tools.bq import run_bq_query
 from src.agent.tools.contracts import BQQueryInput, LogEvent, TraceSpan
 from src.config import config
-from google.cloud import trace_v2
-from google.cloud import run_v2
 
 # Smart defaults for common queries
 DEFAULT_HOURS = 24
@@ -204,6 +202,11 @@ def trace_lookup_tool(trace: str, project: str) -> Dict[str, Any]:
     Fetch spans for a trace to pinpoint failing handler + latency breakdown.
     """
     try:
+        try:
+            from google.cloud import trace_v2
+        except ModuleNotFoundError as e:
+            return {"error": "Missing optional dependency 'google-cloud-trace'", "details": str(e)}
+
         client = trace_v2.TraceServiceClient()
         request = trace_v2.GetTraceRequest(
             project_id=project,
@@ -231,6 +234,11 @@ def service_health_tool(service: str, region: Optional[str] = None) -> Dict[str,
     Detect bad deploys, env drift, missing secrets, revision regressions.
     """
     try:
+        try:
+            from google.cloud import run_v2
+        except ModuleNotFoundError as e:
+            return {"error": "Missing optional dependency 'google-cloud-run'", "details": str(e)}
+
         client = run_v2.ServicesClient()
         parent = f"projects/{config.PROJECT_ID_AGENT}/locations/{region or 'us-central1'}"
         request = run_v2.ListServicesRequest(parent=parent)

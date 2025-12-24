@@ -9,42 +9,60 @@ from fastapi import FastAPI, Query, Request, Response, Depends
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from google.api_core.exceptions import BadRequest, GoogleAPICallError
-from google.cloud import bigquery
-from langchain_core.messages import HumanMessage, ToolMessage
+from contextlib import asynccontextmanager
+try:
+    from google.api_core.exceptions import BadRequest, GoogleAPICallError
+    from google.cloud import bigquery
+except ModuleNotFoundError:
+    # Optional imports for local test environments.
+    BadRequest = Exception  # type: ignore
+    GoogleAPICallError = Exception  # type: ignore
+    bigquery = None  # type: ignore
 from pydantic import BaseModel, Field
-
-from src.agent.graph import graph
 from src.glass_pane.config import glass_config
-from src.glass_pane.query_builder import CanonicalQueryBuilder, LogQueryParams
 from src.services.firebase_service import firebase_service
 from src.services.redis_service import redis_service
 from src.services.qdrant_service import qdrant_service
 from src.services.dual_write_service import dual_write_service, ChatEvent, ToolInvocation
 from src.api.auth import get_current_user_uid
-from src.api.etl_routes import router as etl_router
-from strawberry.fastapi import GraphQLRouter
-from src.api.graphql.schema import schema
-from src.api.graphql.context import get_context
+try:
+    from src.api.etl_routes import router as etl_router
+except ModuleNotFoundError:
+    etl_router = None  # type: ignore
+
+try:
+    from strawberry.fastapi import GraphQLRouter
+    from src.api.graphql.schema import schema
+    from src.api.graphql.context import get_context
+except ModuleNotFoundError:
+    GraphQLRouter = None  # type: ignore
+    schema = None  # type: ignore
+    get_context = None  # type: ignore
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup tasks
+    if os.getenv("ENABLE_VECTOR_SEARCH", "false").lower() == "true":
+        try:
+            qdrant_service.ensure_collections()
+            print("Qdrant collections verified.")
+        except Exception as e:
+            print(f"Warning: Qdrant init failed: {e}")
+    # Yield control to run the app
+    yield
+    # No shutdown tasks needed currently
+
 
 app = FastAPI(
     title="Glass Pane API",
     description="Centralized logging API for GCP Organization logs",
     version="2.0.0",
+    lifespan=lifespan,
 )
 
-# Startup Event
-@app.on_event("startup")
-async def startup_event():
-    # Ensure Qdrant collections exist (only when enabled).
-    if os.getenv("ENABLE_VECTOR_SEARCH", "false").lower() != "true":
-        return
-
-    try:
-        qdrant_service.ensure_collections()
-        print("Qdrant collections verified.")
-    except Exception as e:
-        print(f"Warning: Qdrant init failed: {e}")
+# Chat persistence feature flags
+CHAT_REQUIRE_FIRESTORE = os.getenv("CHAT_REQUIRE_FIRESTORE", "false").lower() == "true"
+CHAT_ENABLE_REALTIME = os.getenv("CHAT_ENABLE_REALTIME", "true").lower() == "true"
 
 # CORS configuration for frontend
 allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
@@ -58,23 +76,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include ETL routes
-app.include_router(etl_router)
+# Include ETL routes (optional in minimal test envs)
+if etl_router is not None:
+    app.include_router(etl_router)
 
-# Include GraphQL routes
-app.include_router(GraphQLRouter(schema, context_getter=get_context), prefix="/graphql", tags=["graphql"])
+# Include GraphQL routes (optional in minimal test envs)
+if GraphQLRouter is not None and schema is not None and get_context is not None:
+    app.include_router(GraphQLRouter(schema, context_getter=get_context), prefix="/graphql", tags=["graphql"])
 
-_bq_client: Optional[bigquery.Client] = None
+_bq_client = None
 
 
-def get_bq_client() -> bigquery.Client:
+def get_bq_client():
     global _bq_client
+    if bigquery is None:
+        raise RuntimeError("Missing optional dependency 'google-cloud-bigquery'")
     if _bq_client is None:
         _bq_client = bigquery.Client(project=glass_config.logs_project_id)
     return _bq_client
 
 
-def get_query_builder() -> CanonicalQueryBuilder:
+def get_query_builder():
+    # Lazy import so src.api.main can be imported in minimal environments.
+    from src.glass_pane.query_builder import CanonicalQueryBuilder
+
     return CanonicalQueryBuilder(
         project_id=glass_config.logs_project_id,
         view_name=glass_config.canonical_view,
@@ -169,6 +194,8 @@ def api_logs(
         safe_hours = min(hours, glass_config.max_time_window_hours)
         safe_limit = min(limit, glass_config.max_limit)
 
+        from src.glass_pane.query_builder import LogQueryParams
+
         params = LogQueryParams(
             limit=safe_limit,
             hours=safe_hours,
@@ -242,6 +269,8 @@ def api_logs_v2(
 
         safe_hours = min(hours, glass_config.max_time_window_hours)
         safe_limit = min(limit, glass_config.max_limit)
+
+        from src.glass_pane.query_builder import LogQueryParams
 
         params = LogQueryParams(
             limit=safe_limit,
@@ -519,9 +548,8 @@ def list_saved_queries(
 import uuid
 import logging
 from datetime import datetime, timezone
+
 from src.security.redaction import redactor
-from src.agent.nodes import get_token_manager, reset_token_manager, update_token_budget
-from src.agent.state import AgentState
 
 logger = logging.getLogger(__name__)
 
@@ -565,55 +593,113 @@ async def chat(
     request: ChatRequest,
     current_user_uid: str = Depends(get_current_user_uid),
 ):
-    # Verify session ownership/existence if provided
+    """AI chat endpoint (SSE).
+
+    This endpoint must never raise before returning a StreamingResponse;
+    any upstream service failures (Firestore/Redis/etc.) should degrade gracefully
+    and be surfaced as SSE error events instead of HTTP 500s.
+    """
+
+    # --- Session handling (best-effort) ---
     session_id = request.session_id
-    if session_id and firebase_service.enabled:
-        session = firebase_service.get_session(session_id)
-        if not session:
-            # If client claims a session that doesn't exist, strictly we should error or create new.
-            # For simplicity and security, let's error.
-             return JSONResponse(
-                {"status": "error", "message": "Session not found"},
-                status_code=404,
-            )
-        if session.get("user_id") != current_user_uid and current_user_uid != "anonymous":
-             return JSONResponse(
-                 {"status": "error", "message": "Access denied"},
-                 status_code=403,
-            )
 
-    # Create new session if needed
-    if not session_id and firebase_service.enabled:
-        session_id = firebase_service.create_session(
-            user_id=current_user_uid,
-            title=request.message[:50] + "..." if len(request.message) > 50 else request.message,
-        )
+    firebase_available = False
+    try:
+        firebase_available = bool(firebase_service.enabled)
+    except Exception as e:
+        logger.warning(f"Firebase enabled-check failed; continuing without sessions: {e}")
+        firebase_available = False
 
-    # Persist user message using dual-write service (hot + cold paths)
-    if session_id:
-        user_event = ChatEvent.create_message_event(
-            session_id=session_id,
-            user_id=current_user_uid,
-            role="user",
-            content=request.message,
-        )
-        dual_write_service.write_event(user_event, firebase_service=firebase_service)
-
-        # Enqueue for async embedding and Qdrant storage
-        redis_service.enqueue(
-            "q:embeddings:realtime",
+    if CHAT_REQUIRE_FIRESTORE and not firebase_available:
+        err_msg = firebase_service.init_error or "Firestore unavailable"
+        return JSONResponse(
             {
-                "session_id": session_id,
-                "project_id": current_user_uid,
-                "role": "user",
-                "content": request.message,
+                "status": "error",
+                "error_type": "firestore_unavailable",
+                "message": err_msg,
             },
+            status_code=503,
         )
 
+    # Verify session ownership/existence if provided
+    if session_id and firebase_available:
+        try:
+            session = firebase_service.get_session(session_id)
+        except Exception as e:
+            logger.warning(f"Session lookup failed; continuing without sessions: {e}")
+            session = None
+
+        if not session:
+            # Client claims a session that doesn't exist.
+            return JSONResponse({"status": "error", "message": "Session not found"}, status_code=404)
+
+        if session.get("user_id") != current_user_uid and current_user_uid != "anonymous":
+            return JSONResponse({"status": "error", "message": "Access denied"}, status_code=403)
+
+    # Create new session if needed (best-effort)
+    if not session_id and firebase_available:
+        try:
+            session_id = firebase_service.create_session(
+                user_id=current_user_uid,
+                title=request.message[:50] + "..." if len(request.message) > 50 else request.message,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to create session; continuing without sessions: {e}")
+            session_id = None
+
+    # Persist user message using dual-write service (hot + cold paths) (best-effort)
+    if session_id:
+        try:
+            user_event = ChatEvent.create_message_event(
+                session_id=session_id,
+                user_id=current_user_uid,
+                role="user",
+                content=request.message,
+            )
+            dual_write_service.write_event(user_event, firebase_service=firebase_service)
+            if firebase_service.realtime_enabled and CHAT_ENABLE_REALTIME:
+                firebase_service.set_realtime_data(
+                    f"chat/{session_id}/latest",
+                    {
+                        "role": "user",
+                        "content": request.message,
+                        "ts": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
+        except Exception as e:
+            logger.warning(f"Failed to persist user message; continuing: {e}")
+
+        # Enqueue for async embedding and Qdrant storage (best-effort)
+        try:
+            redis_service.enqueue(
+                "q:embeddings:realtime",
+                {
+                    "session_id": session_id,
+                    "project_id": current_user_uid,
+                    "role": "user",
+                    "content": request.message,
+                },
+            )
+        except Exception as e:
+            logger.warning(f"Failed to enqueue embedding job; continuing: {e}")
+
+    # --- Graph inputs ---
+    # Lazy imports: allow importing this module in lightweight test environments.
+    from langchain_core.messages import HumanMessage, ToolMessage
+    from src.agent.graph import graph
+    from src.agent.nodes import get_token_manager, reset_token_manager
+
+    run_id = str(uuid.uuid4())
     inputs = {
+        "run_id": run_id,
+        "user_query": request.message,
         "messages": [HumanMessage(content=request.message)],
-        "scope": request.context,
+        "scope": request.context or {},
         "phase": "diagnose",
+        "mode": "interactive",
+        "status": "running",
+        "evidence": [],
+        "tool_calls": [],
     }
 
     async def event_stream():
@@ -622,15 +708,15 @@ async def chat(
         completion_tokens = 0
         active_tool_invocation: Optional[ToolInvocation] = None
 
-        # Reset and get token manager for this request
-        reset_token_manager()
-        token_manager = get_token_manager()
-
-        # Track initial user message tokens (ingress phase)
-        user_msg_tokens = token_manager.count_tokens(request.message) + 4  # +4 for message overhead
-        token_manager.reserve_tokens(user_msg_tokens)
-
         try:
+            # Reset and get token manager for this request
+            reset_token_manager()
+            token_manager = get_token_manager()
+
+            # Track initial user message tokens (ingress phase)
+            user_msg_tokens = token_manager.count_tokens(request.message) + 4  # +4 for message overhead
+            token_manager.reserve_tokens(user_msg_tokens)
+
             # Send session info first
             if session_id:
                 session_payload = {"type": "session", "data": {"session_id": session_id}}
@@ -729,6 +815,10 @@ async def chat(
 
                 elif kind == "on_tool_end":
                     output = event["data"].get("output")
+
+                    # LangGraph typically includes the tool name on the event.
+                    tool_name = event.get("name")
+
                     output_summary = None
                     if isinstance(output, ToolMessage):
                         output_data = {
@@ -736,6 +826,10 @@ async def chat(
                             "name": output.name,
                             "tool_call_id": output.tool_call_id,
                         }
+                        # Fallback: if event doesn't include name, infer from ToolMessage.
+                        if not tool_name:
+                            tool_name = output.name
+
                         output_summary = str(output.content)[:200] if output.content else None
                         # Track tool output tokens
                         tool_output_tokens = token_manager.count_tokens(str(output.content))
@@ -764,7 +858,7 @@ async def chat(
 
                     # Redact tool output
                     safe_output = redactor.scrub_data(output_data)
-                    payload["data"] = {"output": safe_output}
+                    payload["data"] = {"tool": tool_name, "output": safe_output}
                     yield f"data: {json.dumps(payload)}\n\n"
 
                     # Emit token_count event after tool completion
@@ -828,6 +922,16 @@ async def chat(
                         "content": full_response,
                     },
                 )
+                if firebase_service.realtime_enabled and CHAT_ENABLE_REALTIME:
+                    firebase_service.set_realtime_data(
+                        f"chat/{session_id}/latest",
+                        {
+                            "role": "assistant",
+                            "content": full_response,
+                            "ts": datetime.now(timezone.utc).isoformat(),
+                            "tools_used": tools_used,
+                        },
+                    )
 
         except Exception as e:
             import traceback

@@ -51,6 +51,35 @@ GCP_LOGGING/
 └── README.md
 ```
 
+## Local development (Firebase emulators)
+
+Prerequisites: Node.js (npm), Python 3, and Java (for Firebase emulators). No global firebase-tools install is required; the CLI will use `npx firebase-tools`.
+
+1. `./gcl setup` — copies `.env` / `frontend/.env.local` if missing, installs npm + Python dependencies.
+2. `./gcl dev` — starts Firebase emulators (auth, firestore, storage, functions, pubsub, database, hosting, ui, logging) plus the Vite dev server.
+
+Notes:
+- Hosting emulator serves `frontend/dist`; run `./gcl build` to rebuild.
+- Emulator UI: http://localhost:4000, hosting: http://localhost:5000, frontend dev: http://localhost:5173.
+
+### Install the CLI globally (any machine)
+
+```bash
+# From the repo root
+python3 -m pip install .
+# or, to keep user site clean
+pipx install .
+```
+
+After installation you can call the commands anywhere:
+
+```bash
+gcl setup
+gcl dev
+gcl emu
+gcl build
+```
+
 ## Deployment Guide
 
 ### 1. Prerequisite
