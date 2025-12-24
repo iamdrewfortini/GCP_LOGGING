@@ -178,6 +178,11 @@ jobs:
             --timeout 300s \
             --quiet
 
+      - name: Prepare ETL Worker sources
+        run: |
+          rm -rf functions/etl-worker/src
+          rsync -a src functions/etl-worker/src
+
       - name: Deploy ETL Worker Function  
         run: |
           gcloud functions deploy etl-worker \

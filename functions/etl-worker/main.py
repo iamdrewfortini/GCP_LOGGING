@@ -17,8 +17,16 @@ from google.cloud import pubsub_v1
 
 # Add project root to path
 FUNCTION_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = FUNCTION_DIR.parents[1]
-sys.path.insert(0, str(PROJECT_ROOT))
+# Use safe parent resolution; default to function directory
+PROJECT_ROOT = FUNCTION_DIR.parent if FUNCTION_DIR.parent.exists() else FUNCTION_DIR
+
+# If a src directory is available (either alongside the function or in parent), add it to sys.path
+for candidate in [
+    FUNCTION_DIR / "src",
+    PROJECT_ROOT / "src",
+]:
+    if candidate.exists():
+        sys.path.insert(0, str(candidate))
 
 from src.etl.pipeline import ETLPipeline, PipelineConfig, PipelineResult
 from src.etl.stream_manager import StreamManager
