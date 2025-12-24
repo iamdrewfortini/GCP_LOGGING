@@ -105,6 +105,20 @@ jobs:
             --role="roles/secretmanager.secretAccessor" \
             --project=${{ env.GCP_PROJECT_ID }}
 
+      - name: Setup Pub/Sub topics for Cloud Functions
+        run: |
+          # Create topics if they don't exist
+          topics=("chat-events" "etl-jobs" "embedding-jobs" "etl-results")
+          
+          for topic in "${topics[@]}"; do
+            if ! gcloud pubsub topics describe "$topic" --project=${{ env.GCP_PROJECT_ID }} >/dev/null 2>&1; then
+              echo "Creating Pub/Sub topic: $topic"
+              gcloud pubsub topics create "$topic" --project=${{ env.GCP_PROJECT_ID }}
+            else
+              echo "Pub/Sub topic already exists: $topic"
+            fi
+          done
+
       - name: Build Docker image
         run: |
           docker build \
@@ -149,6 +163,52 @@ jobs:
           echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
           echo "Deployed to: $SERVICE_URL"
 
+      - name: Deploy Analytics Worker Function
+        run: |
+          gcloud functions deploy analytics-worker \
+            --gen2 \
+            --runtime python312 \
+            --region ${{ env.GCP_REGION }} \
+            --source functions/analytics-worker \
+            --entry-point process_chat_event \
+            --trigger-topic chat-events \
+            --service-account ${{ env.SERVICE_ACCOUNT }} \
+            --set-env-vars PROJECT_ID=${{ env.GCP_PROJECT_ID }},DATASET_ID=chat_analytics,ENABLE_EMBEDDINGS=true,EMBEDDING_JOBS_TOPIC=embedding-jobs \
+            --memory 512Mi \
+            --timeout 300s \
+            --quiet
+
+      - name: Deploy ETL Worker Function  
+        run: |
+          gcloud functions deploy etl-worker \
+            --gen2 \
+            --runtime python312 \
+            --region ${{ env.GCP_REGION }} \
+            --source functions/etl-worker \
+            --entry-point process_etl_job \
+            --trigger-topic etl-jobs \
+            --service-account ${{ env.SERVICE_ACCOUNT }} \
+            --set-env-vars PROJECT_ID=${{ env.GCP_PROJECT_ID }},ENABLE_AI_ENRICHMENT=false,ETL_BATCH_SIZE=1000,ETL_RESULTS_TOPIC=etl-results \
+            --memory 1Gi \
+            --timeout 540s \
+            --quiet
+
+      - name: Deploy Embedding Worker Function
+        run: |
+          gcloud functions deploy embedding-worker \
+            --gen2 \
+            --runtime python312 \
+            --region ${{ env.GCP_REGION }} \
+            --source functions/embedding-worker \
+            --entry-point process_embedding_job \
+            --trigger-topic embedding-jobs \
+            --service-account ${{ env.SERVICE_ACCOUNT }} \
+            --set-env-vars PROJECT_ID=${{ env.GCP_PROJECT_ID }},REGION=${{ env.GCP_REGION }},QDRANT_URL=${{ env.QDRANT_URL }},EMBEDDING_MODEL=text-embedding-004,ENABLE_EMBEDDINGS=true \
+            --set-secrets QDRANT_API_KEY=QDRANT_API_KEY:latest \
+            --memory 1Gi \
+            --timeout 540s \
+            --quiet
+
       - name: Deployment Summary
         run: |
           echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
@@ -158,5 +218,10 @@ jobs:
           echo "- **Region**: ${{ env.GCP_REGION }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Image**: gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- **URL**: ${{ steps.get-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Cloud Functions Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- analytics-worker (trigger: chat-events)" >> $GITHUB_STEP_SUMMARY
+          echo "- etl-worker (trigger: etl-jobs)" >> $GITHUB_STEP_SUMMARY
+          echo "- embedding-worker (trigger: embedding-jobs)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Deployment completed successfully!" >> $GITHUB_STEP_SUMMARY
